@@ -103,6 +103,8 @@ def manystep(
         case jvm.New(classname=jvm.ClassName("java.lang.AssertionError")):
             # Hack -- if we create an assertion error, we probably also throw it.
             yield "assertion error"
+        case a:
+            raise NotImplementedError(f"Unsupported operation {a.help()}")
 
 
 def initialstate(
