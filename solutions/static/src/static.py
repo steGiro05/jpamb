@@ -49,6 +49,32 @@ class State(sexpr.AsSExpr):
             self.stack,
         )
 
+    @classmethod
+    def abstract(cls, locals_values, stack_values):
+        locals = tuple(SignSet.abstract(vs) for vs in locals_values)
+        stack = tuple(SignSet.abstract(vs) for vs in stack_values)
+        return cls(locals, stack)
+
+    def __le__(self, other):
+        assert isinstance(other, State), f"Expected State but got {other!r}"
+        assert len(self.stack) == len(other.stack), "Stacks should be equal lenght"
+        assert len(self.locals) == len(other.locals), "Locals should be equal lenght"
+
+        return (
+            all(s1 <= s2 for s1, s2 in zip(self.locals, other.locals))
+            and all(s1 <= s2 for s1, s2 in zip(self.stack, other.stack))
+        )
+
+    def __and__ (self, other):
+        assert isinstance(other, State), f"Expected State but got {other!r}"
+        assert len(self.stack) == len(other.stack), "Stacks should be equal lenght"
+        assert len(self.locals) == len(other.locals), "Locals should be equal lenght"
+
+        return State(
+            tuple(s1 & s2 for s1, s2 in zip(self.locals, other.locals)),
+            tuple(s1 & s2 for s1, s2 in zip(self.stack, other.stack)),
+        )
+
 
 def manystep(
     bc: jpamb.Bytecode,

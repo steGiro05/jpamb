@@ -193,9 +193,7 @@ class SignSet(Abstraction, Lattice):
 
         return SignSet(self.signs & other.signs)
 
-    def arithmetic(
-        self, other: "SignSet", opr: jvm.BinaryOpr
-    ) -> tuple["SignSet", set[str]]:
+    def arithmetic(self, other: "SignSet", opr: jvm.BinaryOpr) -> tuple["SignSet", set[str]]:
         match opr:
             case jvm.BinaryOpr.Add:
                 output = set()
@@ -214,6 +212,49 @@ class SignSet(Abstraction, Lattice):
 
                 return (SignSet(output), set())
 
+            case jvm.BinaryOpr.Sub:
+                output = set()
+                if 1 in self.signs:
+                    output.add(1)
+                    if 1 in other.signs:
+                        output.update([0, -1])
+
+                if -1 in self.signs:
+                    output.add(-1)
+                    if -1 in other.signs:
+                        output.update([0, 1])
+
+                if 0 in self.signs:
+                    output.update(-s for s in other.signs)
+                
+                return (SignSet(output), set())
+
+            case jvm.BinaryOpr.Mul:
+                output = set()
+
+                if 1 in self.signs:
+                    output.update(other.signs)
+
+                if 0 in self.signs:
+                    output.add(0)
+
+                if -1 in self.signs:
+                    output.update(-s for s in other.signs)
+
+                return (SignSet(output), set())
+
+            case jvm.BinaryOpr.Div:
+                if 0 in other.signs:
+                    raise ValueError("Division by zero")
+
+                if 1 in self.signs:
+                    output = other.signs
+
+                if -1 in self.signs:
+                    output = set(-s for s in other.signs)
+
+                return (SignSet(output), set())
+                
             case _:
                 raise NotImplementedError(f"TODO: {opr}")
 
@@ -308,6 +349,7 @@ class SignSet(Abstraction, Lattice):
                         if x != y:
                             cases.add(False)
                 return cases
+
 
 from collections.abc import Iterable
 from dataclasses import dataclass
