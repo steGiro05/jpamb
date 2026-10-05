@@ -132,7 +132,7 @@ class Abstraction(ABC):
 
 
 def is_galoi(a: set[jvms.StackValue], b: Abstraction):
-    alpha_a = b.abstract(a)
+    alpha_a = type(b).abstract(a)
 
     for value in a:
         assert value in alpha_a, f"{value} not in {a}"
