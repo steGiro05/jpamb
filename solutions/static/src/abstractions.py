@@ -147,6 +147,8 @@ type Sign = Literal[-1, 0, 1]
 
 def to_sign(value: jvms.StackValue) -> Sign:
     match value:
+        case int(v):
+            return (v > 0) - (v < 0)
         case jvms.StackInt(v):
             return (v > 0) - (v < 0)
         case a:

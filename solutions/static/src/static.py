@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from abstractions import SignSet
 
 import jpamb
+from jvm import state
 import sexpr
 from jpamb import jvm
 from jvm.state import PC, StackInt
@@ -82,6 +83,9 @@ def manystep(
     state: State,
 ) -> Iterable[tuple[PC, object] | str]:
     opr = bc[pc]
+    with open("my_debug.log", "a", encoding="utf-8") as log_file:
+        log_file.write(f"[DEBUG] PC: {pc.offset:03d} | Instr: {opr}\n")
+        log_file.write(f"        State: {state}\n")
     match opr:
         case jvm.Get(static=True, field=field):
             # Hack - Only handle the assertion case
@@ -105,6 +109,11 @@ def manystep(
                         yield err
         case jvm.If(condition=op, target=target):
             [v1, v2], after = state.pop(2)
+            if pc.offset == 45:
+                with open("my_debug.log", "a", encoding="utf-8") as log_file:
+                    log_file.write(f"!!! DEBUG PC 45 !!!\n")
+                    log_file.write(f"Confronto v1 (array): {v1} con v2 (target): {v2}\n")
+                    log_file.write(f"Risultato compare (Ne): {list(SignSet.compare(v1, v2, op))}\n\n")
 
             for res in SignSet.compare(v1, v2, op):
                 match res:
@@ -114,6 +123,10 @@ def manystep(
                         yield (pc + 1, after)
         case jvm.Push(type=jvm.Int(), value=value):
             va = SignSet.abstract([StackInt(value)])
+            yield (pc + 1, state.push(va))
+
+        case jvm.Push(type=jvm.Reference(), value=value):
+            va = SignSet(frozenset({0}))  # mock value, needs to be discarded when popping from the stack
             yield (pc + 1, state.push(va))
 
         case jvm.Load(index=i):
@@ -151,9 +164,60 @@ def manystep(
         case jvm.New(classname=jvm.ClassName("java.lang.AssertionError")):
             # Hack -- if we create an assertion error, we probably also throw it.
             yield "assertion error"
+
+        case jvm.NewArray(type=t):
+            [size], after = state.pop()
+            
+            if -1 in size:
+                yield "negative array size"
+            
+            if 0 in size or 1 in size:
+                arr = SignSet(frozenset({0})) # mock value, needs to be discarded when popping from the stack
+     
+                yield (pc + 1, after.push(arr))
+
+        case jvm.ArrayStore(type=t):
+            [val, index, ref], after = state.pop(3)
+            yield "out of bounds"
+            yield "null pointer"
+            yield (pc+1, after)
+
+        case jvm.ArrayLoad(type=t):
+            [index, arr_ref], after = state.pop(2)
+
+            yield "out of bounds"
+            yield "null pointer"
+            yield (pc+1, after.push(SignSet.top()))
+
+        case jvm.Dup():
+            [v1], after = state.pop(1)
+            yield (pc + 1, after.push(v1).push(v1))
+
+        case jvm.ArrayLength():
+            [arr_ref], after = state.pop(1)
+            
+            yield "null pointer"
+            yield (pc+1, after.push(SignSet(frozenset({0, 1}))))
+
+        case jvm.Incr(index=i, amount=a):
+            current_val = state.load(i)
+            
+            if a > 0:
+                a_sign = frozenset({1})
+            elif a < 0:
+                a_sign = frozenset({-1})
+            else:
+                a_sign = frozenset({0})
+
+
+
+            result, errors = SignSet.arithmetic(current_val, SignSet(a_sign), jvm.BinaryOpr.Add)
+            yield (pc+1, state.store(i, result))
+            for error in errors:
+                yield error
+
         case a:
             raise NotImplementedError(f"Unsupported operation {a.help()}")
-
 
 def initialstate(
     bc: jpamb.Bytecode,
