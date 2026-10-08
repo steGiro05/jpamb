@@ -30,6 +30,11 @@ class AbstractReference(sexpr.AsSExpr):
     def __str__(self):
         return f"Ref({{{', '.join(map(str, self.pcs))}}})"
 
+    def __sexpr__(self):
+            return sexpr.data("abstract-reference", *self.pcs)
+    
+    
+
 @dataclass(frozen=True)
 class StackValue(sexpr.AsSExpr):
     inner_value: SignSet | AbstractReference
@@ -67,6 +72,9 @@ class StackValue(sexpr.AsSExpr):
             return True
             
         return False
+
+    def __sexpr__(self):
+        return self.inner_value.__sexpr__()
         
 @dataclass(frozen=True)
 class State(sexpr.AsSExpr):
@@ -177,9 +185,9 @@ def manystep(
     state: State,
 ) -> Iterable[tuple[PC, object] | str]:
     opr = bc[pc]
-    with open("my_debug.log", "a", encoding="utf-8") as log_file:
-        log_file.write(f"[DEBUG] PC: {pc.offset:03d} | Instr: {opr}\n")
-        log_file.write(f"        State: {state}\n")
+    # with open("my_debug.log", "a", encoding="utf-8") as log_file:
+    #     log_file.write(f"[DEBUG] PC: {pc.offset:03d} | Instr: {opr}\n")
+    #     log_file.write(f"        State: {state}\n")
     match opr:
         case jvm.Get(static=True, field=field):
             # Hack - Only handle the assertion case
@@ -386,7 +394,7 @@ class AbstractInterpreter:
     def step(self) -> tuple[PC, set[str]]:
         pc = self.worklist.pop()
 
-        print(f"Stepping {pc}:\n > {self.bc[pc]}", file=sys.stderr)
+        # print(f"Stepping {pc}:\n > {self.bc[pc]}", file=sys.stderr)
 
         finals = set()
         try:
@@ -406,8 +414,8 @@ class AbstractInterpreter:
                         self.states[pc_] = after
                         self.worklist.append(pc_)
         except Exception as e:
-            with open("my_debug1.log", "a", encoding="utf-8") as log_file:
-                log_file.write(f"[DEBUG], Error: {e}\n")
+            # with open("my_debug1.log", "a", encoding="utf-8") as log_file:
+            #     log_file.write(f"[DEBUG], Error: {e}\n")
             raise e
 
         return pc, finals
@@ -436,15 +444,15 @@ def interpret():
         finals_seen |= final
 
         for f in final:
-            jpamb.emit_step(x, pc, f, depth=1)
+            jpamb.emit_step(x, pc, f, depth=3)
             steps -= 1
 
-        x = jpamb.emit_step(x, pc, ai.states, depth=1)
+        x = jpamb.emit_step(x, pc, ai.states, depth=3)
         steps -= 1
 
     # The worklist reached a fixpoint without finding a terminating state
     if not ai.worklist and not finals_seen:
-        jpamb.emit_step(x, pc, "*", depth=1)
+        jpamb.emit_step(x, pc, "*", depth=3)
 
 
 def analyse():
