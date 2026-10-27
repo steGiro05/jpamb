@@ -179,6 +179,25 @@ class State(sexpr.AsSExpr):
             new_heap
         )
 
+# String methods that accept a null argument instead of throwing
+NULL_SAFE_STRING_METHODS = {"equals", "equalsIgnoreCase"}
+
+
+def push_string_result(state: State, pc: PC, type_: jvm.Type) -> State:
+    """Push the abstract result of a String method: we only know its type."""
+    match type_:
+        case jvm.Boolean() | jvm.Int() | jvm.Char():
+            # Booleans are 0 or 1, and length() and charAt() are never negative
+            return state.push(StackValue(SignSet(frozenset({0, 1}))))
+        case jvm.Object():
+            return state.push(StackValue(AbstractReference(frozenset({pc}))))
+        case jvm.Array():
+            # split(): the array and its strings are all allocated at this pc
+            ref = AbstractReference(frozenset({pc}))
+            return state.push(StackValue(ref)).save_heap(ref, StackValue(ref))
+        case _:
+            raise NotImplementedError(f"Cannot return a value of type {type_}")
+
 def manystep(
     bc: jpamb.Bytecode,
     pc: PC,
@@ -226,6 +245,34 @@ def manystep(
         case jvm.Push(type=jvm.Reference(), value=value):
             va = StackValue(SignSet(frozenset({0})))  # mock value, needs to be discarded when popping from the stack
             yield (pc + 1, state.push(va))
+
+        case jvm.Push(type=jvm.Object(name=jvm.ClassName("java.lang.String"))):
+            # A string constant is a new object, allocated at this pc
+            yield (pc + 1, state.push(StackValue(AbstractReference(frozenset({pc})))))
+
+        case jvm.InvokeVirtual(method=m) if m.classname == jvm.ClassName(
+            "java.lang.String"
+        ):
+            params = list(m.extension.params)
+            [receiver, *args], after = state.pop(len(params) + 1)
+
+            if not isinstance(receiver.inner_value, AbstractReference):
+                yield "null pointer"
+            if m.extension.name not in NULL_SAFE_STRING_METHODS and any(
+                isinstance(t, jvm.Object) and not isinstance(a.inner_value, AbstractReference)
+                for t, a in zip(params, args)
+            ):
+                yield "null pointer"
+            if m.extension.name == "charAt":
+                yield "out of bounds"
+
+            yield (pc + 1, push_string_result(after, pc, m.extension.return_type))
+
+        case jvm.InvokeDynamic(method=m) if m.extension.name == "makeConcatWithConstants":
+            # Concatenation never throws: a null part becomes "null"
+            n = len(m.extension.params)
+            after = state.pop(n)[1] if n > 0 else state
+            yield (pc + 1, after.push(StackValue(AbstractReference(frozenset({pc})))))
 
         case jvm.Load(index=i):
             va = state.load(i)
@@ -354,7 +401,7 @@ def initialstate(
     if inputs is None:
         for i, p in enumerate(methodid.extension.params):
             match p:
-                case jvm.Array() | jvm.Reference():
+                case jvm.Array() | jvm.Reference() | jvm.Object():
                     dummy_pc = PC(methodid, -(i + 1))
                     locals[i] = StackValue(AbstractReference(frozenset({dummy_pc})))
                     heap[dummy_pc] = StackValue(SignSet.top())
@@ -367,7 +414,7 @@ def initialstate(
                     locals[i] = StackValue(SignSet.abstract([StackInt(int(value))]))
                 case jpamb.case.Int(value=value):
                     locals[i] = StackValue(SignSet.abstract([StackInt(int(value))]))
-                case jpamb.case.Array():
+                case jpamb.case.Array() | jpamb.case.String():
                     dummy_pc = PC(methodid, -(i + 1))
                     locals[i] = StackValue(AbstractReference(frozenset({dummy_pc})))
                     heap[dummy_pc] = StackValue(SignSet.top())
