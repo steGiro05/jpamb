@@ -2,7 +2,7 @@
 
 ## Scope
 
-This document proves that the proposed label-set abstraction is a sound over-approximation of explicit taint dependencies in the modeled JVM semantics. The result is intentionally narrower than a proof of the complete security tool: it shows that the `labels` component of `TaintValue` and its transfer functions do not discard a concrete dependency represented by the model. Abstract reference targets are retained separately to locate heap cells; proving the precision of points-to information is outside the scope of this label-set proof. Call-graph construction, library summaries, sink specifications, and dynamic exploit confirmation are separate concerns and appear as assumptions at the end.
+This document proves that the proposed label-set abstraction is a sound over-approximation of explicit taint dependencies in the modeled JVM semantics. The result is intentionally narrower than a proof of the complete security tool: it shows that the `labels` component of `TaintValue` and its transfer functions do not discard a concrete dependency represented by the model. Abstract reference targets are retained separately to locate heap cells; proving the precision of points-to information is outside the scope of this label-set proof. The finite target set contains ordinary allocation sites, synthetic `EXTERNAL_pi` targets for entry-parameter objects, and the distinguished `NULL` target. `NULL` does not address a heap cell. Call-graph construction, library summaries, sink specifications, and dynamic exploit confirmation are separate concerns and appear as assumptions at the end.
 
 ## Concrete and abstract domains
 
@@ -120,7 +120,7 @@ At a call, each argument label set is copied to the corresponding callee paramet
 
 ### Heap fields and arrays
 
-A reference-valued `TaintValue` contains both a label set and a finite set of abstract allocation sites. The allocation sites determine which heap cells may be accessed; they are not themselves source labels.
+A reference-valued `TaintValue` contains both a label set and a finite set of abstract reference targets. Non-null targets determine which heap cells may be accessed; the targets are not themselves source labels. Joining reference values uses set union, so a possible `NULL` target is preserved when paths merge.
 
 For a field read, the analysis joins the field values stored at every possible target and conservatively combines their labels with the labels of the receiver reference:
 
@@ -130,7 +130,7 @@ For a field write, every possible target is weakly updated. The stored labels in
 
 `heap'(target.field) = heap(target.field) union labels(reference) union labels(value)`.
 
-Arrays initially use one abstract contents cell per allocation site. Array reads and writes follow the same rules, additionally joining index labels when the selected element may depend on a tainted index. These rules may introduce additional dependencies, but they do not remove a dependency represented by the concrete access.
+Arrays initially use one abstract contents cell per non-null abstract target. Array reads and writes follow the same rules, additionally joining index labels when the selected element may depend on a tainted index. These rules may introduce additional dependencies, but they do not remove a dependency represented by the concrete access.
 
 ### Security sinks and findings
 
@@ -142,7 +142,7 @@ A library summary must provide a transfer function satisfying the same over-appr
 
 ## Lifting the abstraction to JVM states
 
-The value abstraction is lifted component-wise to abstract locals, operand stacks, and heaps. Locals and stack positions contain `TaintValue` instances, each consisting of a label set and, for references, possible allocation sites. Heap cells are addressed by an allocation site together with a field or abstract array-content identifier. An abstract state is
+The value abstraction is lifted component-wise to abstract locals, operand stacks, and heaps. Locals and stack positions contain `TaintValue` instances, each consisting of a label set and, for references, possible abstract targets. Heap cells are addressed by a non-null abstract target together with a field or abstract array-content identifier. An abstract state is
 
 `State# = Locals# x Stack# x Heap#`,
 
@@ -164,7 +164,7 @@ The proof is by induction on the number of concrete steps. The base case follows
 
 The worklist algorithm repeatedly joins incoming states at program points and reprocesses a point only when its stored state grows. All transfer functions are monotone: adding possible dependencies to an input cannot remove dependencies from the output.
 
-The label lattice is finite, as are the program points, local-variable positions, valid operand-stack positions, allocation sites, and context-insensitive return locations in the analyzed program. Hence the global abstract state has finite height. It can grow only finitely many times, so the worklist eventually becomes empty and the analysis reaches a fixpoint without widening.
+The label lattice is finite, as are the program points, local-variable positions, valid operand-stack positions, abstract reference targets, and context-insensitive return locations in the analyzed program. Hence the global abstract state has finite height. It can grow only finitely many times, so the worklist eventually becomes empty and the analysis reaches a fixpoint without widening.
 
 At that fixpoint, Theorem 2 implies that every modeled reachable concrete state is represented. In particular, if a concrete value reaching a configured security sink depends on source `pi`, the corresponding abstract sink value contains `pi`.
 

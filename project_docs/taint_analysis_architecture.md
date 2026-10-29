@@ -42,10 +42,18 @@ The implementation will introduce a `TaintValue`, separate from the existing sig
 ```text
 TaintValue
   labels: TaintSet
-  references: optional finite set of allocation sites
+  references: optional finite set of abstract reference targets
 ```
 
-This separation is necessary because a JVM reference can simultaneously point to abstract heap locations and carry taint labels. The exact treatment of null and unknown references will be finalized before implementation.
+This separation is necessary because a JVM reference can simultaneously point to abstract heap locations and carry taint labels. Null and external references are represented as described below.
+
+The initial implementation uses three kinds of abstract reference target:
+
+- an allocation site, identified by the program counter of a `new` instruction;
+- `EXTERNAL_pi`, for an object supplied through entry-method parameter `pi` and therefore allocated outside the analyzed program;
+- `NULL`, which preserves the possibility of a null reference through state joins.
+
+For example, joining the targets `{NULL}` and `{PC15}` produces `{NULL, PC15}`. A general unknown-reference target is not introduced initially. Unsupported operations that return references must instead provide a trusted summary; a general unknown target can be added later if an operation cannot be modeled this way. The absence of a state at a program point represents unreachability and is distinct from every ordinary `TaintValue`.
 
 An abstract JVM state contains abstract locals, an abstract operand stack, and an abstract heap. The whole analysis maps each program counter to one such state:
 
@@ -53,7 +61,7 @@ An abstract JVM state contains abstract locals, an abstract operand stack, and a
 PC -> (locals, operand stack, heap)
 ```
 
-Heap objects are represented by allocation sites, identified by the program counter of the allocating instruction. This keeps the abstract heap finite, at the cost of merging objects created at the same site.
+Heap objects are represented by non-null abstract targets. Ordinary objects use their allocation site, identified by the program counter of the allocating instruction, while entry-parameter objects use their synthetic `EXTERNAL_pi` target. This keeps the abstract heap finite, at the cost of merging objects created at the same site. `NULL` never identifies a heap cell.
 
 ## Propagation rules
 
@@ -67,7 +75,7 @@ Unsupported library behavior, reflection, and simulated deserialization are hand
 
 The analysis uses the existing worklist architecture. A successor program point is processed again only when joining an incoming state makes its stored state larger. The analysis terminates when the worklist is empty, rather than after an arbitrary number of steps.
 
-No widening is required for the taint domain. The label set, program points, allocation sites, and context-insensitive return locations are finite, so abstract states can grow only a finite number of times before reaching a fixpoint.
+No widening is required for the taint domain. The label set, program points, abstract reference targets, and context-insensitive return locations are finite, so abstract states can grow only a finite number of times before reaching a fixpoint.
 
 ## Output for the fuzzer
 

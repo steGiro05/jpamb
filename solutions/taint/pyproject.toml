@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "taint-analysis"
+version = "0.1.0"
+description = "Taint abstraction for the JPAMB static analysis"
+requires-python = ">=3.13"
+dependencies = [
+  "jpamb",
+]
+
+[tool.uv.sources]
+jpamb = { path = "../../", editable = true }
+
+[dependency-groups]
+dev = [
+  "hypothesis>=6.165.5",
+  "pytest>=8.3.4",
+]
