@@ -1,6 +1,8 @@
 import random
 import re
 import sys
+import subprocess
+import json
 
 import jpamb
 import jvm
@@ -647,21 +649,10 @@ def interpret():
 FIXED_INT = 1
 FIXED_BOOLEAN = False
 
-# Seeds tried first for every tainted string
-STRING_SEEDS = [ # possible gadget chains classes extracted by the syntactic call graph analysis
-    "jpamb.cases.advanced.CWE470$SafeWrapperCommand",
-    "jpamb.cases.advanced.CWE470$__CANARY__Command",
-]
-
-MAX_COMBINED = 3
-MAX_REMOVABLE = 6   
-
-
 def is_string(param: jvm.Type) -> bool:
     return isinstance(param, jvm.Object) and param.name == jvm.ClassName(
         "java.lang.String"
     )
-
 
 def fixed_value(param: jvm.Type):
     """The constant used for every parameter that is not a (tainted) string."""
@@ -677,95 +668,31 @@ def fixed_value(param: jvm.Type):
         case _:
             raise NotImplementedError(f"Unsupported input type: {param!r}")
 
-
-def _collect_strings(bc: jpamb.Bytecode, methodid: jvm.AbsMethodID) -> list[str]:
-    """String constants used in the method: good candidates for tainted inputs."""
-    strings = []
-    for opr in bc.getmethod(methodid).opcodes:
-        match opr:
-            case jvm.Push(type=t, value=value) if is_string(t):
-                if value not in strings:
-                    strings.append(value)
-    return strings
-
-def collect_strings(bc: jpamb.Bytecode, methodid: jvm.AbsMethodID) -> list[str]:
-    """Mock method waiting for dictionary analysis."""
-    return ["jpamb.cases.advanced.CWE470$","Command", "Safe"]
-
-
-def removals(seed: str, interesting: list[str]) -> list[str]:
-    """The seed with every subset of the interesting strings removed from it."""
-    out = []
-    for size in range(min(len(interesting), MAX_REMOVABLE) + 1):
-        for subset in combinations(interesting[:MAX_REMOVABLE], size):
-            variant = seed
-            for s in subset:
-                variant = variant.replace(s, "")
-            out.append(variant)
-    return out
-
-
-def additions(base: str, interesting: list[str]) -> list[str]:
-    """Interesting strings added around a base string."""
-    out = []
-
-    # One interesting string at a time: prepend / append
-    for s in interesting:
-        out += [s + base, base + s]
-
-    # Ordered combinations of several: all prepended / all appended
-    for size in range(2, min(len(interesting), MAX_COMBINED) + 1):
-        for combo in permutations(interesting, size):
-            joined = "".join(combo)
-            out += [joined + base, base + joined]
-
-    # One at the front, a different one at the back
-    for front, back in permutations(interesting, 2):
-        out.append(front + base + back)
-
-    return out
-
-
-def build_pool(string_dictionary: list[str]) -> list[str]:
-    interesting = [s for s in dict.fromkeys(string_dictionary) if s]
-
-    # First every removal variant (cheap, most likely), then the additions
-    bases = []
-    for seed in STRING_SEEDS:
-        bases += removals(seed, interesting)
-    bases = list(dict.fromkeys(bases))
-
-    pool = list(bases)
-    for base in bases:
-        pool += additions(base, interesting)
-
-    return list(dict.fromkeys(pool))  # drop duplicates, keep order
-
-
 def fuzz_input(
     rand: random.Random,
     methodid: jvm.AbsMethodID,
     trial: int,
-    string_dictionary: list[str],
+    string_pool: list[str],
+    max_distance_value: int
 ) -> jpamb.case.Input:
-    pool = build_pool(string_dictionary)
     values = []
-    string_position = 0  # index among the string params only
-
+    string_position = 0 
+    
+    if not string_pool:
+        string_pool = ["", "__CANARY__"]
+        
     for param in methodid.extension.params:
         if not is_string(param):
             values.append(fixed_value(param))
             continue
 
-        # Different strings per parameter: cover combinations of the pool
-        index = (trial // (len(pool) ** string_position)) % len(pool)
-        value = pool[index]
+        index = (trial // (len(string_pool) ** string_position)) % len(string_pool)
+        value = string_pool[index]
 
         values.append(jpamb.case.String(value))
         string_position += 1
 
     return jpamb.case.Input(values)
-
 
 def run(bc, methodid, test_input, max_steps: int) -> str | None:
     """Execute one input. Returns the outcome, or None if it did not finish."""
@@ -781,6 +708,94 @@ def run(bc, methodid, test_input, max_steps: int) -> str | None:
             return "*"
     return None
 
+def build_call_graph(methodid: jvm.AbsMethodID) -> dict | None:
+    """Run solutions/syntactic/src/call_graph.py on the method and parse its JSON."""
+    result = subprocess.run(
+        ["uv", "run", "python", "solutions/syntactic/src/call_graph.py", str(methodid)],
+        capture_output=True,  # keeps stdout clean for the analyser's own output
+        text=True,
+    )
+    if result.returncode != 0:
+        return None  # unknown method, missing target/decompiled, ...
+    return json.loads(result.stdout)
+
+def build_dictionary(methodid: jvm.AbsMethodID) -> list[dict]:
+    """Run solutions/syntactic/src/string_dictionary.py on the method and parse its JSON."""
+    result = subprocess.run(
+        ["uv", "run", "python", "solutions/syntactic/src/string_dictionary.py", str(methodid)],
+        capture_output=True,  # keeps stdout clean for the analyser's own output
+        text=True,
+    )
+    if result.returncode != 0:
+        return []
+    try:
+        return json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return []
+
+def max_distance(start_method: str, call_graph_data: dict) -> int:
+    graph = call_graph_data.get("graph", {})
+    sinks = set(call_graph_data.get("sinks", []))
+    
+    if start_method not in graph:
+        return -1
+
+    def dfs(node, path_visited):
+        if node in path_visited:
+            return -1
+            
+        path_visited.add(node)
+        
+        max_d = 0 if node in sinks else -1
+        
+        for callee in graph.get(node, []):
+            dist = dfs(callee, path_visited)
+            
+            if dist != -1:
+                max_d = max(max_d, dist + 1)
+                
+        path_visited.remove(node)
+        
+        return max_d
+
+    return dfs(start_method, set())
+
+def generate_parameter(operation: str, strings: list[str], base_payload: str) -> list[str]:
+    generated = []
+    
+    if operation == "concatenation":
+        stripped_payload = base_payload
+        for s in strings:
+            if isinstance(s, str):
+                stripped_payload = stripped_payload.replace(s, "")
+        generated.append(stripped_payload)
+        
+        for s in strings:
+            if isinstance(s, str):
+                generated.append(base_payload.replace(s, ""))
+                
+    else:
+        for s in strings:
+            if not isinstance(s, str):
+                continue
+                
+            if operation == "equals":
+                generated.append(s)
+                generated.append("")
+                
+            elif operation == "equalsIgnoreCase":
+                generated.append(s.lower())
+                generated.append(s.upper())
+                
+            elif operation == "startsWith" or operation == "contains":
+                generated.append(s + base_payload)
+                generated.append(base_payload)
+                
+            elif operation == "endsWith":
+                generated.append(base_payload + s)
+                generated.append(base_payload)
+            
+    return generated
 
 def analyse():
     """Dynamic analysis: fuzz the string parameters, keep the rest fixed."""
@@ -796,30 +811,63 @@ def analyse():
     suite, eff = jpamb.setup()
     bc = jpamb.Bytecode(suite, eff, {})
 
-    string_dictionary = collect_strings(bc, methodid) # has to be substituted with syntactic analysis for dictionary extraction
+    call_graph_data = build_call_graph(methodid)
+    all_methods = set()
+    
+    if call_graph_data and "graph" in call_graph_data:
+        all_methods.update(call_graph_data["graph"].keys())
+    else:
+        all_methods.add(str(methodid))
+
+    merged_dictionaries = []
+    for m in all_methods:
+        method_dicts = build_dictionary(m)
+        for entry in method_dicts:
+            if entry not in merged_dictionaries:
+                merged_dictionaries.append(entry)
+
+    max_steps_to_sink = max_distance(str(methodid), call_graph_data) if call_graph_data else -1
+
+    base_payloads = []
+    if call_graph_data and "dynamic_edges" in call_graph_data:
+        for edge in call_graph_data["dynamic_edges"]:
+            if edge.get("kind") == "reflection":
+                callee = edge.get("callee", "")
+                if callee:
+                    class_name = callee.split(":")[0].rsplit(".", 1)[0]
+                    base_payloads.append(class_name)
+
+    raw_string_pool = []
+    
+    for base_payload in base_payloads:
+        for entry in merged_dictionaries:
+            operation = entry.get("method")
+            strings = entry.get("strings", [])
+            
+            if operation and strings:
+                mutations = generate_parameter(operation, strings, base_payload)
+                raw_string_pool.extend(mutations)
+
+    string_pool = list(dict.fromkeys(raw_string_pool))
 
     MAX_STEPS = 200  # instructions per input
     MAX_TESTS = 100  # different inputs to try
     rand = random.Random(0)  # deterministic
 
-    # Every string parameter is now considered tainted, so we fuzz it. next step is getting these parameters from the taint analysis
     has_tainted = any(is_string(p) for p in methodid.extension.params)
 
-    # Without string params the input is always the same: run it once
     n_trials = MAX_TESTS if has_tainted else 1
 
     behaviors = set()
 
     for trial in range(n_trials):
-        test_input = fuzz_input(rand, methodid, trial, string_dictionary)
+        test_input = fuzz_input(rand, methodid, trial, string_pool, max_steps_to_sink)
         outcome = run(bc, methodid, test_input, MAX_STEPS)
 
         if outcome is not None:
             behaviors.add(outcome)
         elif not has_tainted:
-            # Deterministic input that never finishes: assume non-termination
             behaviors.add("*")
 
     for query in jpamb.QUERIES:
         print(f"{query};{'found' if query in behaviors else 'not-found'}")
-
