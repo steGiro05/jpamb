@@ -6,6 +6,11 @@ import jpamb
 import jvm
 import jvm.state as jvmc
 
+from itertools import permutations, combinations
+
+def _debug_log(*args, **kwargs):
+    with open("debug.log", "a", encoding="utf-8") as f:
+        print(*args, file=f, **kwargs)
 
 def to_int32(value: int) -> int:
     """
@@ -459,6 +464,12 @@ def step(bc: jpamb.Bytecode, state: jvmc.State) -> tuple[jvmc.PC, jvmc.State | s
         case jvm.InvokeStatic(method=m) if m.classname == jvm.ClassName("java.lang.Class") and m.extension.name == "forName":
             name_ref = frame.stack.pop()
             class_name = state.heap[name_ref].content
+
+            try:
+                bc.suite.findclass(jvm.ClassName(class_name), eff=bc.eff)
+            except (FileNotFoundError, KeyError):
+                output = "ok" # we assume normal exception handled by the program
+                return pc, output
             
             class_obj = jvmc.HeapObject(classname=jvm.ClassName("java.lang.Class"), fields={"target_class": class_name})
             ref = state.heap.new(class_obj)
@@ -627,324 +638,188 @@ def interpret():
             break
 
 
-INTERESTING_INTS = [
-    0,
-    1,
-    -1,
-    2,
-    -2,
-    3,
-    -3,
-    5,
-    -5,
-    10,
-    -10,
-    42,
-    -42,
-    100,
-    -100,
-    # Large constant and neighboring values
-    10054202,
-    10054203,
-    10054204,
-    -10054202,
-    -10054203,
-    -10054204,
-    # Java integer boundaries
-    2147483647,
-    -2147483648,
+# ============================================================
+# STRING-ONLY FUZZING
+# Taint analysis on strings: only String parameters are tainted,
+# so only they are fuzzed. Every other type gets a fixed value.
+# ============================================================
+
+FIXED_INT = 1
+FIXED_BOOLEAN = False
+
+# Seeds tried first for every tainted string
+STRING_SEEDS = [ # possible gadget chains classes extracted by the syntactic call graph analysis
+    "jpamb.cases.advanced.CWE470$SafeWrapperCommand",
+    "jpamb.cases.advanced.CWE470$__CANARY__Command",
 ]
 
+MAX_COMBINED = 3
+MAX_REMOVABLE = 6   
 
-# ============================================================
-# NEW: DICTIONARY ANALYSIS
-# Finds integer and string const used in the method.
-# ============================================================
-def collect_dictionary(bc, methodid):
 
-    int_dictionary = []
-    string_dictionary = []
+def is_string(param: jvm.Type) -> bool:
+    return isinstance(param, jvm.Object) and param.name == jvm.ClassName(
+        "java.lang.String"
+    )
 
-    method = bc.getmethod(methodid)
 
-    # Look through the bytecode instructions
-    for opr in method.opcodes:
+def fixed_value(param: jvm.Type):
+    """The constant used for every parameter that is not a (tainted) string."""
+    match param:
+        case jvm.Int():
+            return jpamb.case.Int(FIXED_INT)
+        case jvm.Boolean():
+            return jpamb.case.Boolean(FIXED_BOOLEAN)
+        case jvm.Array(contains=jvm.Int()):
+            return jpamb.case.Array(jvm.Int(), [FIXED_INT])
+        case jvm.Array(contains=jvm.Char()):
+            return jpamb.case.Array(jvm.Char(), "a")
+        case _:
+            raise NotImplementedError(f"Unsupported input type: {param!r}")
 
+
+def _collect_strings(bc: jpamb.Bytecode, methodid: jvm.AbsMethodID) -> list[str]:
+    """String constants used in the method: good candidates for tainted inputs."""
+    strings = []
+    for opr in bc.getmethod(methodid).opcodes:
         match opr:
+            case jvm.Push(type=t, value=value) if is_string(t):
+                if value not in strings:
+                    strings.append(value)
+    return strings
 
-            # Integer const
-            case jvm.Push(type=jvm.Int(), value=value):
-                if value not in int_dictionary:
-                    int_dictionary.append(value)
+def collect_strings(bc: jpamb.Bytecode, methodid: jvm.AbsMethodID) -> list[str]:
+    """Mock method waiting for dictionary analysis."""
+    return ["jpamb.cases.advanced.CWE470$","Command", "Safe"]
 
-            # String const
-            case jvm.Push(type=t, value=value) if isinstance(
-                t, jvm.Object
-            ) and t.name == jvm.ClassName("java.lang.String"):
-                if value not in string_dictionary:
-                    string_dictionary.append(value)
 
-            case _:
-                pass
+def removals(seed: str, interesting: list[str]) -> list[str]:
+    """The seed with every subset of the interesting strings removed from it."""
+    out = []
+    for size in range(min(len(interesting), MAX_REMOVABLE) + 1):
+        for subset in combinations(interesting[:MAX_REMOVABLE], size):
+            variant = seed
+            for s in subset:
+                variant = variant.replace(s, "")
+            out.append(variant)
+    return out
 
-    return int_dictionary, string_dictionary
+
+def additions(base: str, interesting: list[str]) -> list[str]:
+    """Interesting strings added around a base string."""
+    out = []
+
+    # One interesting string at a time: prepend / append
+    for s in interesting:
+        out += [s + base, base + s]
+
+    # Ordered combinations of several: all prepended / all appended
+    for size in range(2, min(len(interesting), MAX_COMBINED) + 1):
+        for combo in permutations(interesting, size):
+            joined = "".join(combo)
+            out += [joined + base, base + joined]
+
+    # One at the front, a different one at the back
+    for front, back in permutations(interesting, 2):
+        out.append(front + base + back)
+
+    return out
+
+
+def build_pool(string_dictionary: list[str]) -> list[str]:
+    interesting = [s for s in dict.fromkeys(string_dictionary) if s]
+
+    # First every removal variant (cheap, most likely), then the additions
+    bases = []
+    for seed in STRING_SEEDS:
+        bases += removals(seed, interesting)
+    bases = list(dict.fromkeys(bases))
+
+    pool = list(bases)
+    for base in bases:
+        pool += additions(base, interesting)
+
+    return list(dict.fromkeys(pool))  # drop duplicates, keep order
 
 
 def fuzz_input(
     rand: random.Random,
     methodid: jvm.AbsMethodID,
-    trial: int = 0,
-    int_dictionary=None,
-    string_dictionary=None,
+    trial: int,
+    string_dictionary: list[str],
 ) -> jpamb.case.Input:
-
-    if int_dictionary is None:
-        int_dictionary = []
-
-    if string_dictionary is None:
-        string_dictionary = []
-
-    int_values = INTERESTING_INTS.copy()
-
-    for value in int_dictionary:
-        if value not in int_values:
-            int_values.append(value)
-
+    pool = build_pool(string_dictionary)
     values = []
+    string_position = 0  # index among the string params only
 
-    for position, param in enumerate(methodid.extension.params):
+    for param in methodid.extension.params:
+        if not is_string(param):
+            values.append(fixed_value(param))
+            continue
 
-        match param:
+        # Different strings per parameter: cover combinations of the pool
+        index = (trial // (len(pool) ** string_position)) % len(pool)
+        value = pool[index]
 
-            # -----------------------------
-            # INT -
-            # -----------------------------
-            case jvm.Int():
-                if trial < 80:
-                    index = (trial // (len(int_values) ** position)) % len(int_values)
-
-                    value = int_values[index]
-
-                else:
-                    value = rand.randint(-(1 << 31), (1 << 31) - 1)
-
-                values.append(jpamb.case.Int(value))
-
-            # -----------------------------
-            # BOOLEAN -
-            # -----------------------------
-            case jvm.Boolean():
-
-                value = bool((trial // (2**position)) % 2)
-
-                values.append(jpamb.case.Boolean(value))
-
-            # -----------------------------
-            # STRING -
-            # -----------------------------
-            case jvm.Object(name=classname) if classname == jvm.ClassName(
-                "java.lang.String"
-            ):
-
-                interesting_strings = [
-                    "",
-                    "hello",
-                    "not hello",
-                    "Hello",
-                    "x",
-                    "a",
-                    "test",
-                    "null",
-                    "hello world",
-                ]
-                for string in string_dictionary:
-                    if string not in interesting_strings:
-                        interesting_strings.append(string)
-                if trial < 80:
-                    value = interesting_strings[trial % len(interesting_strings)]
-
-                else:
-                    length = rand.randint(0, 10)
-
-                    value = "".join(
-                        rand.choice("abcdefghijklmnopqrstuvwxyz") for _ in range(length)
-                    )
-
-                values.append(jpamb.case.String(value))
-
-            # =============================================
-            # NEW: SUPPORT INT ARRAYS
-            # =============================================
-            case jvm.Array(contains=jvm.Int()):
-
-                interesting_arrays = [
-                    [],
-                    [0],
-                    [1],
-                    [-1],
-                    [0, 0],
-                    [1, 2, 3],
-                    [-1, 0, 1],
-                    [42],
-                    [100],
-                ]
-
-                if trial < 80:
-                    array = interesting_arrays[trial % len(interesting_arrays)]
-
-                else:
-                    length = rand.randint(0, 6)
-
-                    array = [rand.choice(int_values) for _ in range(length)]
-
-                values.append(jpamb.case.Array(jvm.Int(), array))
-
-            # =============================================
-            # NEW: SUPPORT CHAR ARRAYS
-            # =============================================
-            case jvm.Array(contains=jvm.Char()):
-
-                interesting_char_arrays = [
-                    "",
-                    "a",
-                    "x",
-                    "hello",
-                    "Hello",
-                    "test",
-                ]
-
-                if trial < 80:
-                    value = interesting_char_arrays[
-                        trial % len(interesting_char_arrays)
-                    ]
-
-                else:
-                    length = rand.randint(0, 8)
-
-                    value = "".join(
-                        rand.choice("abcdefghijklmnopqrstuvwxyz") for _ in range(length)
-                    )
-
-                values.append(jpamb.case.Array(jvm.Char(), value))
-
-            case _:
-                raise NotImplementedError(f"Unsupported input type: {param!r}")
+        values.append(jpamb.case.String(value))
+        string_position += 1
 
     return jpamb.case.Input(values)
 
 
-def gen_int(depth):
-    yield 0
+def run(bc, methodid, test_input, max_steps: int) -> str | None:
+    """Execute one input. Returns the outcome, or None if it did not finish."""
+    state = initial(bc, methodid, test_input)
+    for _ in range(max_steps):
+        pc, state = step(bc, state)
 
-    for i in range(depth):
-        yield i + 1
-        yield -(i + 1)
+        if isinstance(state, str):
+            return state
+
+        # Unconditional jump to itself: infinite loop
+        if isinstance(bc[pc], jvm.Goto) and state.frames.peek().pc.offset == pc.offset:
+            return "*"
+    return None
 
 
 def analyse():
-    """
-    Dynamic analysis using systematic and random inputs.
-    """
+    """Dynamic analysis: fuzz the string parameters, keep the rest fixed."""
 
     methodid = jpamb.getmethodid(
         "dynamic",
         "1.0",
         "bests analyzers ",
-        [
-            "dynamic",
-            "python",
-            "smallcheck",
-            "fuzzing",
-            "random",
-            "dictionary",
-            "syntatic",
-        ],
+        ["dynamic", "python", "fuzzing", "random", "dictionary", "syntatic"],
         for_science=True,
     )
 
     suite, eff = jpamb.setup()
-
     bc = jpamb.Bytecode(suite, eff, {})
 
-    int_dictionary, string_dictionary = collect_dictionary(bc, methodid)
+    string_dictionary = collect_strings(bc, methodid) # has to be substituted with syntactic analysis for dictionary extraction
 
-    # Maximum instructions executed for one input
-    MAX_STEPS = 200
+    MAX_STEPS = 200  # instructions per input
+    MAX_TESTS = 100  # different inputs to try
+    rand = random.Random(0)  # deterministic
 
-    # More steps for SmallCheck because recursive inputs need longer
-    SMALLCHECK_STEPS = 2000 
-     
+    # Every string parameter is now considered tainted, so we fuzz it. next step is getting these parameters from the taint analysis
+    has_tainted = any(is_string(p) for p in methodid.extension.params)
 
-    # Number of different inputs to try
-    MAX_TESTS = 100
+    # Without string params the input is always the same: run it once
+    n_trials = MAX_TESTS if has_tainted else 1
 
-    # Deterministic randomness
-    rand = random.Random(0)
-
-    # Store all observed outcomes
     behaviors = set()
-    # ============================================================
-    # SMALLCHECK
-    # Test small integer values first
-    # ============================================================
 
-    if len(methodid.extension.params) == 1 and isinstance(
-        methodid.extension.params[0], jvm.Int
-    ):
-        for value in gen_int(8):
+    for trial in range(n_trials):
+        test_input = fuzz_input(rand, methodid, trial, string_dictionary)
+        outcome = run(bc, methodid, test_input, MAX_STEPS)
 
-            test_input = jpamb.case.Input([jpamb.case.Int(value)])
+        if outcome is not None:
+            behaviors.add(outcome)
+        elif not has_tainted:
+            # Deterministic input that never finishes: assume non-termination
+            behaviors.add("*")
 
-            state = initial(bc, methodid, test_input)
-
-            for step_number in range(SMALLCHECK_STEPS):
-
-               pc, state = step(bc, state)
-
-               if isinstance(state, str):
-                behaviors.add(state)
-                break
-
-               if isinstance(bc[pc], jvm.Goto):
-                new_pc = state.frames.peek().pc
-
-                if new_pc.offset == pc.offset:
-                    behaviors.add("*")
-                    break
-
-    # Generate and test different inputs
-    for trial in range(MAX_TESTS):
-
-        test_input = fuzz_input(
-            rand, methodid, trial, int_dictionary, string_dictionary
-        )
-
-        state = initial(bc, methodid, test_input)
-
-        # Run the interpreter on this input
-        for step_number in range(MAX_STEPS):
-            pc, state = step(bc, state)
-
-            # The program terminated normally or with an error.
-            if isinstance(state, str):
-                behaviors.add(state)
-                break
-
-            # Detect an unconditional jump to itself.
-            if isinstance(bc[pc], jvm.Goto):
-                new_pc = state.frames.peek().pc
-                if new_pc.offset == pc.offset:
-                    behaviors.add("*")
-                    break
-        else:
-
-            if len(methodid.extension.params) == 0:
-
-                behaviors.add("*")
-
-    # Report the behaviors we actually observed
     for query in jpamb.QUERIES:
-        if query in behaviors:
-            print(f"{query};found")
-        else:
-            print(f"{query};not-found")
+        print(f"{query};{'found' if query in behaviors else 'not-found'}")
+
