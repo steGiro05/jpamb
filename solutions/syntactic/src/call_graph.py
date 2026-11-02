@@ -21,44 +21,6 @@ How it works:
    Each added edge records its kind, "reflection" or "deserialization", so
    the fuzzer knows whether to build class names or serialized payloads.
 4. Print what the target reaches, as JSON or Graphviz DOT.
-
-The TARGET is required. It can be a JPAMB method ID, a method name, or the
-file of a class (.java, .json or .class):
-
-  # Only what is reachable from one method (full ID or just the name)
-  uv run python solutions/syntactic/src/call_graph.py whitelist_deserialization
-  uv run python solutions/syntactic/src/call_graph.py 'jpamb.cases.Vulnerable.whitelist_deserialization:(Ljava/lang/String;)V'
-
-  # Everything reachable from the methods of a file
-  uv run python solutions/syntactic/src/call_graph.py src/main/java/jpamb/cases/Vulnerable.java
-
-  # Write the JSON to call-graph.json (or to a path of your choice)
-  uv run python solutions/syntactic/src/call_graph.py whitelist_deserialization --write-json
-  uv run python solutions/syntactic/src/call_graph.py whitelist_deserialization --output=out/graph.json
-
-  # Export as DOT (dynamic edges are dashed and labelled with their kind)
-  uv run python solutions/syntactic/src/call_graph.py Vulnerable.java --format dot
-
-  # Choose the sinks and declare mocks of dynamic mechanisms
-  uv run python solutions/syntactic/src/call_graph.py Vulnerable.java \\
-      --sink '__CANARY__Command.<init>' --stub deserialization=simulateReadObject
-
-Output (JSON):
-  {
-    "graph":         {caller: [callees]},              # includes dynamic edges
-    "dynamic_edges": [{caller, callee, kind}, ...],    # only the added ones
-    "sinks":         [method IDs]
-  }
-
-Notes:
-- This is a static call graph: possible calls, not guaranteed execution.
-- Dynamic edges are an over-approximation: they can add paths that cannot
-  happen, but they do not miss paths to a sink inside the file.
-- Classes defined in other files are not seen: sinks and gadget classes must
-  be in the same file as the target.
-- A stub (e.g. a mock of readObject) loses its own outgoing edges, which are
-  replaced by the dynamic ones, so the result does not depend on the mock.
-- Put TARGET before --output, or write --output=PATH.
 """
 
 from __future__ import annotations
@@ -88,36 +50,39 @@ PRIMITIVES = {
 # Configuration of dynamic mechanisms
 # ---------------------------------------------------------------------------
 
-# External methods whose target class is chosen at runtime:
-# (owner in internal form, method name) -> kind of dynamic link.
-DYNAMIC_SITES = {
-    ("java/lang/Class", "forName"): "reflection",
-    ("java/lang/Class", "newInstance"): "reflection",
-    ("java/lang/ClassLoader", "loadClass"): "reflection",
-    ("java/lang/reflect/Constructor", "newInstance"): "reflection",
-    ("java/io/ObjectInputStream", "readObject"): "deserialization",
-}
-
-# Defined methods that stand for a dynamic mechanism (mocks of readObject...).
-# The key is a method name, "Class.name" or a full method ID.
-DEFAULT_STUBS = {"simulateReadObject": "deserialization"}
-
-# A method is a sink when one of these strings is contained in its ID.
-DEFAULT_SINKS = ("__CANARY__Command.<init>",)
-
 # Dynamic sites are linked to these methods of the backward closure.
 ENTRY_POINT_NAMES = ("<init>", "<clinit>")
 
 KINDS = ("reflection", "deserialization")
 DEFAULT_JSON_OUTPUT = "call-graph.json"
 
+def load_config(config_path: Path) -> tuple[list[str], dict[str, str], dict[tuple[str, str], str]]:
+    """Load sinks, stubs, and dynamic sites from an external JSON configuration file."""
+    if not config_path.is_file():
+        raise FileNotFoundError(f"Configuration file not found: {config_path}")
+        
+    with config_path.open(encoding="utf-8") as f:
+        data = json.load(f)
+        
+    sinks = []
+    stubs = {}
+    dynamic_sites = {}
+    
+    config = data.get("analyzer_config", {})
+    for vuln in config.get("vulnerabilities", []):
+        if vuln.get("enabled", False):
+            sinks.extend(vuln.get("sinks", []))
+            stubs.update(vuln.get("stubs", {}))
+            
+            for site in vuln.get("dynamic_sites", []):
+                owner = site["class_name"].replace(".", "/")
+                dynamic_sites[(owner, site["method_name"])] = site["kind"]
+            
+    return sinks, stubs, dynamic_sites
+
 
 def type_descriptor(value: Any) -> str:
-    """Encode a JVM2JSON type as a JVM type descriptor.
-
-    Method declarations wrap types in ``{'type': ...}`` whereas invocations
-    usually use primitive strings, or ``{'kind': 'class', 'name': ...}``.
-    """
+    """Encode a JVM2JSON type as a JVM type descriptor."""
     if value is None:
         return "V"
     if isinstance(value, str):
@@ -125,7 +90,6 @@ def type_descriptor(value: Any) -> str:
             return PRIMITIVES[value]
         if value.startswith("[") or (value.startswith("L") and value.endswith(";")):
             return value
-        # Reference class name (internal JVM slash form or dotted form).
         return f"L{value.replace('.', '/')};"
     if not isinstance(value, dict):
         raise ValueError(f"Unsupported JVM2JSON type: {value!r}")
@@ -143,14 +107,12 @@ def type_descriptor(value: Any) -> str:
 
 
 def method_id(class_name: str, name: str, args: Iterable[Any], returns: Any) -> str:
-    """Use JPAMB method IDs, e.g. jpamb.cases.Calls.fib:(I)I."""
     owner = class_name.replace("/", ".")
     signature = "".join(type_descriptor(arg) for arg in args)
     return f"{owner}.{name}:({signature}){type_descriptor(returns)}"
 
 
 def split_method_id(mid: str) -> tuple[str, str]:
-    """Split a method ID into (owner class, method name)."""
     owner, _, name = mid.split(":(", 1)[0].rpartition(".")
     return owner, name
 
@@ -168,7 +130,6 @@ def _invoked_method_id(inst: dict[str, Any]) -> str | None:
         return None
     method = inst.get("method")
     if not isinstance(method, dict):
-        # An invokedynamic without a statically named method is unresolved.
         return None
     ref = method.get("ref")
     if not isinstance(ref, dict) or ref.get("kind") != "class":
@@ -183,12 +144,6 @@ def _invoked_method_id(inst: dict[str, Any]) -> str | None:
 def build_call_graph_from_classes(
     classes: Iterable[dict[str, Any]], *, include_external: bool = False
 ) -> dict[str, list[str]]:
-    """Extract caller -> [callee, ...] from already-loaded JVM2JSON classes.
-
-    Every defined method is a key, even if it makes no calls. By default,
-    edges to methods not defined in the supplied classes are excluded. Use
-    ``include_external=True`` to retain calls into Java libraries.
-    """
     class_data = list(classes)
     graph: dict[str, set[str]] = {}
     for cls in class_data:
@@ -214,7 +169,6 @@ def build_call_graph_from_classes(
 
 
 def load_classes(decompiled_root: str | Path = "target/decompiled") -> list[dict[str, Any]]:
-    """Read all decompiled JSON class files."""
     root = Path(decompiled_root)
     if not root.is_dir():
         raise FileNotFoundError(
@@ -238,14 +192,12 @@ def load_classes(decompiled_root: str | Path = "target/decompiled") -> list[dict
 def build_call_graph(
     decompiled_root: str | Path = "target/decompiled", *, include_external: bool = False
 ) -> dict[str, list[str]]:
-    """Read all decompiled JSON class files and construct the call graph."""
     return build_call_graph_from_classes(
         load_classes(decompiled_root), include_external=include_external
     )
 
 
 def reachable_methods(graph: dict[str, list[str]], entry: str) -> list[str]:
-    """Find transitive callees (including entry), handling recursion safely."""
     if entry not in graph:
         raise KeyError(f"Unknown method: {entry}")
     visited: set[str] = set()
@@ -264,8 +216,7 @@ def reachable_methods(graph: dict[str, list[str]], entry: str) -> list[str]:
 # ---------------------------------------------------------------------------
 
 
-def _dynamic_kind(inst: dict[str, Any]) -> str | None:
-    """Kind of dynamic mechanism invoked by an instruction, if any."""
+def _dynamic_kind(inst: dict[str, Any], dynamic_sites: dict[tuple[str, str], str]) -> str | None:
     if inst.get("opr") != "invoke":
         return None
     method = inst.get("method")
@@ -275,28 +226,22 @@ def _dynamic_kind(inst: dict[str, Any]) -> str | None:
     if not isinstance(ref, dict) or not isinstance(ref.get("name"), str):
         return None
     owner = ref["name"].replace(".", "/")
-    return DYNAMIC_SITES.get((owner, method.get("name")))
+    return dynamic_sites.get((owner, method.get("name")))
 
 
-def find_dynamic_sites(classes: Iterable[dict[str, Any]]) -> dict[str, set[str]]:
-    """Methods that invoke a dynamic mechanism -> kinds they use.
-
-    This must run on the bytecode, not on the graph: external calls such as
-    Class.forName are dropped from the graph unless include_external is set.
-    """
+def find_dynamic_sites(classes: Iterable[dict[str, Any]], dynamic_sites: dict[tuple[str, str], str]) -> dict[str, set[str]]:
     sites: dict[str, set[str]] = defaultdict(set)
     for cls in classes:
         for method in cls.get("methods", []):
             caller = _method_definition_id(cls["name"], method)
             for inst in (method.get("code") or {}).get("bytecode", []):
-                kind = _dynamic_kind(inst)
+                kind = _dynamic_kind(inst, dynamic_sites)
                 if kind:
                     sites[caller].add(kind)
     return dict(sites)
 
 
 def find_stubs(graph: dict[str, list[str]], stubs: dict[str, str]) -> dict[str, str]:
-    """Defined methods that stand for a dynamic mechanism -> kind."""
     found = {}
     for mid in graph:
         owner, name = split_method_id(mid)
@@ -308,13 +253,11 @@ def find_stubs(graph: dict[str, list[str]], stubs: dict[str, str]) -> dict[str, 
 
 
 def find_sinks(graph: dict[str, list[str]], specs: Iterable[str]) -> list[str]:
-    """Methods whose ID contains one of the sink specifications."""
     specs = list(specs)
     return sorted(mid for mid in graph if any(spec in mid for spec in specs))
 
 
 def callers_closure(graph: dict[str, list[str]], sinks: Iterable[str]) -> set[str]:
-    """Every method from which a sink is reachable (sinks included)."""
     callers: dict[str, set[str]] = defaultdict(set)
     for caller, callees in graph.items():
         for callee in callees:
@@ -336,12 +279,6 @@ def add_dynamic_edges(
     stubs: dict[str, str],
     sinks: Iterable[str],
 ) -> tuple[dict[str, list[str]], list[dict[str, str]]]:
-    """Link every dynamic site to the entry points that can reach a sink.
-
-    Order matters: stubs lose their own edges first, then the closure is
-    computed, then the dynamic edges are added. Otherwise the result would
-    depend on the mock.
-    """
     new_graph = {
         method: ([] if method in stubs else list(callees))
         for method, callees in graph.items()
@@ -378,7 +315,6 @@ FILE_SUFFIXES = {".java", ".json", ".class"}
 
 
 def class_name_from_file(path: Path) -> str:
-    """Class name (dotted) of a .java, decompiled .json or .class file."""
     if path.suffix == ".java" and path.is_file():
         text = path.read_text(encoding="utf-8")
         match = re.search(r"^\s*package\s+([\w.]+)\s*;", text, re.MULTILINE)
@@ -388,7 +324,6 @@ def class_name_from_file(path: Path) -> str:
         data = json.loads(path.read_text(encoding="utf-8"))
         if isinstance(data, dict) and isinstance(data.get("name"), str):
             return data["name"].replace("/", ".")
-    # Fallback (.class, or a file we cannot read): use the package path.
     parts = list(path.with_suffix("").parts)
     if "jpamb" in parts:
         parts = parts[parts.index("jpamb"):]
@@ -396,18 +331,12 @@ def class_name_from_file(path: Path) -> str:
 
 
 def top_level(class_name: str) -> str:
-    """Dotted name of the top-level class (the source file) of a class."""
     return class_name.replace("/", ".").split("$")[0]
 
 
 def select_scope(
     classes: list[dict[str, Any]], target: str
 ) -> tuple[list[dict[str, Any]], list[str]]:
-    """Classes of the file(s) of the target, and the entry methods.
-
-    The target is a method ID, a method name (optionally qualified) or a
-    class file. Only classes of the same top-level class are kept.
-    """
     defined = {
         _method_definition_id(cls["name"], method): top_level(cls["name"])
         for cls in classes
@@ -423,7 +352,6 @@ def select_scope(
         if not entries:
             raise KeyError(f"No methods of class {top} (from file {target})")
     else:
-        # Method name, optionally qualified (Class.name or package.Class.name).
         wanted = target.split(":(", 1)[0]
         entries = [
             m
@@ -471,6 +399,11 @@ def main(argv: list[str] | None = None) -> int:
         "The graph is built from the file of the target.",
     )
     parser.add_argument(
+        "--config",
+        type=Path,
+        help="Path to a JSON configuration file containing vulnerabilities, sinks, dynamic sites, and stubs.",
+    )
+    parser.add_argument(
         "--decompiled",
         default="target/decompiled",
         type=Path,
@@ -488,16 +421,15 @@ def main(argv: list[str] | None = None) -> int:
         "--sink",
         action="append",
         metavar="TEXT",
-        help="Sink: any method whose ID contains TEXT (repeatable, "
-        f"default {', '.join(DEFAULT_SINKS)})",
+        help="Sink: any method whose ID contains TEXT (repeatable). "
+        "Overrides config file if provided.",
     )
     parser.add_argument(
         "--stub",
         action="append",
         metavar="KIND=NAME",
-        help="Declare a method as a stub of a dynamic mechanism; KIND is "
-        "reflection or deserialization, NAME is a method name, Class.name or "
-        "a full method ID (repeatable)",
+        help="Declare a method as a stub of a dynamic mechanism. "
+        "Overrides config file if provided.",
     )
     args = parser.parse_args(argv)
 
@@ -507,7 +439,21 @@ def main(argv: list[str] | None = None) -> int:
         if args.output is None:
             args.output = Path(DEFAULT_JSON_OUTPUT)
 
-    stubs = dict(DEFAULT_STUBS)
+    config_sinks = []
+    config_stubs = {}
+    config_dynamic_sites = {}
+
+    if args.config:
+        try:
+            config_sinks, config_stubs, config_dynamic_sites = load_config(args.config)
+        except Exception as e:
+            parser.error(f"Error loading config file: {e}")
+
+    sinks_list = args.sink if args.sink else config_sinks
+    if not sinks_list:
+        parser.error("No sinks provided. Supply them via --config or --sink.")
+
+    stubs = dict(config_stubs)
     for spec in args.stub or []:
         kind, sep, name = spec.partition("=")
         if not sep or kind not in KINDS or not name:
@@ -515,16 +461,17 @@ def main(argv: list[str] | None = None) -> int:
         stubs[name] = kind
 
     try:
-        # Only the classes of the target's file: forward and backward both stay here.
         scope, entries = select_scope(load_classes(args.decompiled), args.target)
         graph = build_call_graph_from_classes(scope)
 
-        sinks = find_sinks(graph, args.sink or DEFAULT_SINKS)
+        sinks = find_sinks(graph, sinks_list)
         if not sinks:
             print("call_graph: warning: no sink in this file, no dynamic edges added",
                   file=sys.stderr)
+        
+        sites = find_dynamic_sites(scope, config_dynamic_sites)
         graph, dynamic_edges = add_dynamic_edges(
-            graph, find_dynamic_sites(scope), find_stubs(graph, stubs), sinks
+            graph, sites, find_stubs(graph, stubs), sinks
         )
 
         reached: set[str] = set()
@@ -557,7 +504,6 @@ def main(argv: list[str] | None = None) -> int:
     except (FileNotFoundError, ValueError, KeyError, json.JSONDecodeError) as exc:
         print(f"call_graph: {exc}", file=sys.stderr)
         return 1
-
 
 if __name__ == "__main__":
     raise SystemExit(main())
