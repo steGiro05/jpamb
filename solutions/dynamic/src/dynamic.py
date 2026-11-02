@@ -1,5 +1,4 @@
 import random
-import re
 import sys
 import subprocess
 import json
@@ -14,194 +13,24 @@ def _debug_log(*args, **kwargs):
     with open("debug.log", "a", encoding="utf-8") as f:
         print(*args, file=f, **kwargs)
 
-def to_int32(value: int) -> int:
-    """
-    Convert a Python integer to a signed Java 32-bit integer.
-    """
-    return (value + (1 << 31)) % (1 << 32) - (1 << 31)
-
-
-def java_division(v1: int, v2: int) -> int:
-    """
-    Java integer division truncates toward zero.
-    """
-    quotient = abs(v1) // abs(v2)
-
-    if (v1 < 0) != (v2 < 0):
-        quotient = -quotient
-
-    return to_int32(quotient)
-
-
 def binary(op, v1: int, v2: int) -> int | str:
     match op:
         case jvm.BinaryOpr.Div:
-            if v2 == 0:
+            try:
+                return v1 // v2
+            except ZeroDivisionError:
                 return "divide by zero"
-            return java_division(v1, v2)
-
-        case jvm.BinaryOpr.Rem:
-            if v2 == 0:
-                return "divide by zero"
-            quotient = java_division(v1, v2)
-            return to_int32(v1 - quotient * v2)
-
-        case jvm.BinaryOpr.Add:
-            return to_int32(v1 + v2)
-
-        case jvm.BinaryOpr.Sub:
-            return to_int32(v1 - v2)
-
-        case jvm.BinaryOpr.Mul:
-            return to_int32(v1 * v2)
-
-        case _:
-            raise NotImplementedError(f"Unhandled binary operation {op!r}")
+        case a:
+            raise NotImplementedError(f"Unhandled binary {op!r}")
 
 
 def compare(op, v1: int, v2: int) -> bool:
     match op:
         case jvm.CmpOpr.Eq:
             return v1 == v2
-
-        case jvm.CmpOpr.Ne:
-            return v1 != v2
-
-        case jvm.CmpOpr.Lt:
-            return v1 < v2
-
-        case jvm.CmpOpr.Le:
-            return v1 <= v2
-
-        case jvm.CmpOpr.Gt:
-            return v1 > v2
-
-        case jvm.CmpOpr.Ge:
-            return v1 >= v2
-
-        case jvm.CmpOpr.Is:
-            return v1 is v2
-
         case _:
-            raise NotImplementedError(f"Unhandled comparison {op!r}")
+            raise NotImplementedError(f"Unhandled comparation {op!r}")
 
-def bootstrap_args(bc: jpamb.Bytecode, cn: jvm.ClassName, index: int) -> list[dict]:
-    """Get the static arguments of a bootstrap method of a class.
-
-    An invokedynamic opcode only stores the index of its bootstrap method;
-    the arguments (e.g. the recipe of makeConcatWithConstants) are stored
-    in the class, so the caller must know which class the opcode is in.
-    """
-    for bsm in bc.suite.findclass(cn, eff=bc.eff).get("bootstrapmethods", []):
-        if bsm["index"] == index:
-            return bsm["method"]["args"]
-    raise IndexError(f"Could not find bootstrap method {index} in {cn}")
-
-def java_to_string(heap: jvmc.Heap, type_: jvm.Type, value: jvmc.StackValue) -> str:
-    """Convert a stack value to text, as Java's String.valueOf does."""
-    match type_:
-        case jvm.Boolean():
-            return "true" if value.value else "false"
-        case jvm.Char():
-            return chr(value.value)
-        case jvm.Int() | jvm.Short() | jvm.Byte():
-            return str(value.value)
-        case jvm.Object(name=jvm.ClassName("java.lang.String")):
-            if value.value == 0:
-                return "null"
-            string = heap[value]
-            assert isinstance(string, jvmc.HeapString), f"expected string, but got {string}"
-            return string.content
-        case _:
-            raise NotImplementedError(f"Cannot convert {type_} to a string")
-
-def string_split(string: str, regex: str, limit: int = 0) -> list[str]:
-    """Split like Java's String.split: the separator is a regex, and the
-    limit decides how many parts to make and whether to keep trailing "".
-
-    Simple regexes behave the same in Python and Java; capturing groups do not.
-    """
-    if limit == 1:
-        return [string]
-    # Python's maxsplit=0 means "no limit", like Java's limit <= 0
-    parts = re.split(regex, string, maxsplit=max(limit - 1, 0))
-    if limit == 0 and len(parts) > 1:
-        while parts and parts[-1] == "":
-            parts.pop()
-    return parts
-
-
-def string_char_at(string: str, index: int) -> int:
-    # Python accepts negative indexes, Java does not
-    if not 0 <= index < len(string):
-        raise IndexError(index)
-    return ord(string[index])
-
-
-# The String methods we can execute, with the Python code that computes them
-STRING_METHODS = {
-    "equals": lambda s, other: s == other,
-    "equalsIgnoreCase": lambda s, other: other is not None and s.lower() == other.lower(),
-    "startsWith": lambda s, prefix: s.startswith(prefix),
-    "endsWith": lambda s, suffix: s.endswith(suffix),
-    "contains": lambda s, part: part in s,
-    "isEmpty": lambda s: s == "",
-    "length": lambda s: len(s),
-    "charAt": string_char_at,
-    "split": string_split,
-}
-
-# Methods that accept a null argument instead of throwing NullPointerException
-NULL_SAFE_STRING_METHODS = {"equals", "equalsIgnoreCase"}
-
-# Exactly the format Java accepts: Python's int() would also accept spaces,
-# underscores ("1_0") and non-ASCII digits
-INT_PATTERN = re.compile(r"[+-]?[0-9]+")
-
-
-def integer_parse_int(string: str | None) -> int:
-    """Parse like Java's Integer.parseInt; ValueError is NumberFormatException."""
-    if string is None or not INT_PATTERN.fullmatch(string):
-        raise ValueError(f"For input string: {string!r}")
-    value = int(string)
-    if not -(2**31) <= value < 2**31:
-        raise ValueError(f"For input string: {string!r}")
-    return value
-
-STATIC_METHODS = {
-    (jvm.ClassName("java.lang.Integer"), "parseInt"): integer_parse_int,
-}
-
-# Methods invoked with invoke special (like constructors of library classes)
-SPECIAL_METHODS = {
-    (jvm.ClassName("java.lang.Object"), "<init>"): lambda this: None,
-    (jvm.ClassName("java.lang.IllegalArgumentException"), "<init>"): lambda this, msg: None,
-}
-
-def from_stack(heap: jvmc.Heap, value: jvmc.StackValue):
-    """Turn a stack value into a Python value: strings become str, null None."""
-    if isinstance(value, jvmc.StackReference):
-        if value.value == 0:
-            return None
-        obj = heap[value]
-        return obj.content if isinstance(obj, jvmc.HeapString) else obj
-    return value.value
-
-
-def to_stack(heap: jvmc.Heap, type_: jvm.Type, value) -> jvmc.StackValue:
-    """Turn a Python result into a stack value of the given JVM type."""
-    match type_:
-        case jvm.Boolean():
-            return jvmc.StackInt(1 if value else 0)
-        case jvm.Int() | jvm.Char():
-            return jvmc.StackInt(value)
-        case jvm.Object(name=jvm.ClassName("java.lang.String")):
-            return heap.new(jvmc.HeapString(value))
-        case jvm.Array(contains=jvm.Object(name=jvm.ClassName("java.lang.String")) as t):
-            refs = [heap.new(jvmc.HeapString(s)).value for s in value]
-            return heap.new(jvmc.HeapArray(t, refs))
-        case _:
-            raise NotImplementedError(f"Cannot return a value of type {type_}")
 
 def step(bc: jpamb.Bytecode, state: jvmc.State) -> tuple[jvmc.PC, jvmc.State | str]:
     assert isinstance(state, jvmc.State), f"expected state but got {state}"
@@ -211,81 +40,11 @@ def step(bc: jpamb.Bytecode, state: jvmc.State) -> tuple[jvmc.PC, jvmc.State | s
     output = state
     print(f"Stepping {pc}:\n > {opr}", file=sys.stderr)
     match opr:
-        case jvm.Dup():
-            v1 = frame.stack.pop()
-            frame.stack.push(v1)
-            frame.stack.push(v1)
-            frame.pc += 1
-
-        case jvm.Ifz(condition=c, target=t):
-            assert isinstance(
-                c, jvm.CmpOpr
-            ), f"expected comparison op, but got {type(c)}"
-            assert isinstance(t, int), f"expected int, but got {type(t)}"
-
-            v1 = frame.stack.pop()
-            assert isinstance(v1, jvmc.StackInt) or isinstance(
-                v1, jvmc.StackReference
-            ), f"expected int or reference, but got {v1}"
-            result = compare(c, v1.value, 0)
-
-            if isinstance(result, str):
-                output = result
-            else:
-                frame.pc = pc % t if result else frame.pc + 1
-
-        case jvm.Load(type=t, index=n):
-            v = frame.locals[n]
-            frame.stack.push(v)
-            frame.pc += 1
-
-        case jvm.ArrayLoad(type=t):
-            index, arr_ref = frame.stack.pop(), frame.stack.pop()
-            if arr_ref.value == 0:
-                output = "null pointer"
-            else:
-                arr = state.heap[arr_ref]
-                if index.value < 0 or index.value >= len(arr.values):
-                    output = "out of bounds"
-                else:
-                    arr = state.heap[arr_ref]
-
-                    val = arr.values[index.value]
-                    # Arrays of objects store heap addresses, not numbers
-                    if isinstance(t, jvm.Reference):
-                        frame.stack.push(jvmc.StackReference(val))
-                    else:
-                        frame.stack.push(jvmc.StackInt(val))
-
-                    frame.pc += 1
-
-        case jvm.Incr(index=i, amount=a):
-            current_val = frame.locals[i].value
-            new_val = to_int32(current_val + a)
-            frame.locals[i] = jvmc.StackInt(new_val)
-            frame.pc += 1
-
-        case jvm.Goto(target=t):
-            frame.pc = frame.pc % t
-
         case jvm.Push(type=t, value=v):
-            if isinstance(t, jvm.Int):
+            if t is jvm.Int():
                 frame.stack.push(jvmc.StackInt(v))
-
-            elif isinstance(t, jvm.Float):
-                frame.stack.push(jvmc.StackFloat(v))
-
-            elif isinstance(t, jvm.Object) and t.name == jvm.ClassName(
-                "java.lang.String"
-            ):
-                # Create the string in the JVM heap
-                ref = state.heap.new(jvmc.HeapString(v))
-                # Push its reference onto the operand stack
-                frame.stack.push(ref)
-            elif isinstance(t, jvm.Reference):
-                frame.stack.push(jvmc.StackReference(v))
             else:
-                raise NotImplementedError(f"Push type {t} not supported!")
+                raise NotImplementedError("Error")
             frame.pc += 1
 
         case jvm.Binary(type=jvm.Int(), operant=op):
@@ -302,22 +61,14 @@ def step(bc: jpamb.Bytecode, state: jvmc.State) -> tuple[jvmc.PC, jvmc.State | s
                 frame.pc += 1
 
         case jvm.Return(type=t):
-            # Retrieve the return value, if the method has one
-            val = None
             if t is not None:
-                val = frame.stack.pop()
-            # Remove the frame of the method that just finished
+                raise NotImplementedError("Still to be done")
+
             state.frames.pop()
-            # Is there a caller waiting for this method?
+
             if state.frames:
-                caller = state.frames.peek()
-                # Pass the return value back to the caller
-                if val is not None:
-                    caller.stack.push(val)
-                # Continue after the invocation instruction
-                caller.pc += 1
+                raise NotImplementedError("Still to be done")
             else:
-                # No frames remain: the entire program finished
                 output = "ok"
 
         case jvm.Get(static=True, field=field):
@@ -327,26 +78,6 @@ def step(bc: jpamb.Bytecode, state: jvmc.State) -> tuple[jvmc.PC, jvmc.State | s
             # Hack - Assuming assertions are never disabled
             frame.stack.push(jvmc.StackInt(0))
             frame.pc += 1
-
-        case jvm.If(condition=c, target=t):
-            val2, val1 = frame.stack.pop(), frame.stack.pop()
-            result = compare(c, val1.value, val2.value)
-
-            if isinstance(result, str):
-                output = result
-            else:
-                frame.pc = pc % t if result else frame.pc + 1
-
-        case jvm.NewArray(type=t, dim=d):
-            size = frame.stack.pop()
-            if size.value < 0:
-                output = "negative array size"
-            else:
-                initial_values = [0] * size.value
-                arr = jvmc.HeapArray(contains=t, values=initial_values)
-                ref = state.heap.new(arr)
-                frame.stack.push(ref)
-                frame.pc += 1
 
         case jvm.New(classname=jvm.ClassName("java.lang.AssertionError")):
             # Hack -- if we create an assertion error, we probably also throw it.
@@ -620,7 +351,7 @@ def interpret():
     methodid, input, max_steps = jpamb.getcase(
         "dynamic",
         "1.0",
-        "bests analyzers",
+        "The Rice Theorem Cookers",
         ["dynamic", "python"],
         for_science=True,
     )
