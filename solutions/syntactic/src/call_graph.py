@@ -154,7 +154,9 @@ def find_constructors(graph):
     # Find the sink
     sinks = [
         m for m in graph
-        if "__CANARY__Command.<init>" in m
+        if ".<init>:" in m
+        and m.split(".<init>:", 1)[0].replace("$", ".").split(".")[-1]
+        == "__CANARY__Command"
     ]
 
     # Search backwards
@@ -213,7 +215,7 @@ def build_call_graph_from_classes(
             code = method.get("code") or {}
 
             for inst in code.get("bytecode", []):
-                kind = _dynamic_kind(inst)if dynamic else None
+                kind = _dynamic_kind(inst) if dynamic else None
 
                 if kind:
                     dynamic_sites.append((caller, kind))
@@ -223,19 +225,33 @@ def build_call_graph_from_classes(
 
                 if callee and (include_external or callee in known_methods):
                     graph[caller].add(callee)
+    # Connect dynamic calls to constructors
+    if dynamic:
+        constructors = find_constructors(graph)
 
-    # Step 2: Find constructors that can reach the sink
-    constructors = find_constructors(graph)
+        for caller, kind in dynamic_sites:
+            for constructor in constructors:
+                graph[caller].add(constructor)
 
-    # Step 3: Connect dynamic calls to those constructors
-    for caller, kind in dynamic_sites:
-        for constructor in constructors:
-            graph[caller].add(constructor)
+                if dynamic_edges is not None:
+                    edge = {
+                        "caller": caller,
+                        "callee": constructor,
+                        "kind": kind
+                    }
+
+                    if edge not in dynamic_edges:
+                        dynamic_edges.append(edge)
 
     return {caller: sorted(callees) for caller, callees in sorted(graph.items())}
 
 def build_call_graph(
-    decompiled_root: str | Path = "target/decompiled", *, include_external: bool = False
+    decompiled_root: str | Path = "target/decompiled",
+      *,
+        include_external: bool = False,
+        dynamic: bool = False,
+        dynamic_edges: list | None = None
+
 ) -> dict[str, list[str]]:
     """Read all decompiled JSON class files and construct the call graph."""
     root = Path(decompiled_root)
@@ -255,7 +271,7 @@ def build_call_graph(
             classes.append(data)
     if not classes:
         raise ValueError(f"No JVM2JSON class structures found under {root}")
-    return build_call_graph_from_classes(classes, include_external=include_external)
+    return build_call_graph_from_classes(classes, include_external=include_external, dynamic=dynamic, dynamic_edges=dynamic_edges)
 
 
 def reachable_methods(graph: dict[str, list[str]], entry: str) -> list[str]:
@@ -301,23 +317,45 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Keep JDK and other external targets",
     )
-    parser.add_argument("--format", choices=("json", "dot"), default="json")
+    parser.add_argument("--dynamic",action="store_true",help="Enable dynamic call graph")
+    parser.add_argument("--format", choices=("json", "dot",  "detailed-json"), default="json")
     parser.add_argument("--output", type=Path, help="Write output to file instead of stdout")
     args = parser.parse_args(argv)
 
-    try:
-        graph = build_call_graph(args.decompiled, include_external=args.include_external)
+    try: 
+        dynamic_edges = []
+        graph = build_call_graph(
+            args.decompiled,  
+            include_external=args.include_external,  
+            dynamic=args.dynamic,
+            dynamic_edges=dynamic_edges
+            )
+        
         if args.entry:
             reached = reachable_methods(graph, args.entry)
             graph = {node: graph[node] for node in reached if node in graph}
             # In the exported subgraph, remove targets outside the selected set.
             for node in graph:
-                graph[node] = [callee for callee in graph[node] if callee in reached]
-        output = (
-            _dot(graph)
-            if args.format == "dot"
-            else json.dumps(graph, indent=2, ensure_ascii=False) + "\n"
-        )
+                graph[node] = [
+                    callee for callee in graph[node] 
+                    if callee in reached
+                    ]
+            dynamic_edges = [
+                edge for edge in dynamic_edges
+                if edge ["callee"] in graph.get(edge["caller"], [])
+            ]
+         #generate output  
+        if args.format == "dot":
+              output = _dot(graph)
+            
+        elif args.format == "detailed-json":
+             output= json.dumps ({
+                "graph": graph,
+                "dynamic_edges": dynamic_edges
+            }, indent=2) + "\n"
+
+        else:
+             output = json.dumps(graph, indent=2, ensure_ascii=False) + "\n"
         if args.output:
             args.output.parent.mkdir(parents=True, exist_ok=True)
             args.output.write_text(output, encoding="utf-8")
