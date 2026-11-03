@@ -209,7 +209,8 @@ def build_call_graph_from_classes(
     *,
       include_external: bool = False,
       dynamic: bool = False,
-      dynamic_edges: list | None = None
+      dynamic_edges: list | None = None,
+      dynamic_sites: dict | None = None,
 ) -> dict[str, list[str]]:
     """Extract caller -> [callee, ...] from already-loaded JVM2JSON classes.
 
@@ -241,7 +242,7 @@ def build_call_graph_from_classes(
             code = method.get("code") or {}
 
             for inst in code.get("bytecode", []):
-                kind = _dynamic_kind(inst) if dynamic else None
+                kind = _dynamic_kind(inst, dynamic_sites) if dynamic else None
 
                 if kind:
                     dynamic_sites.append((caller, kind))
