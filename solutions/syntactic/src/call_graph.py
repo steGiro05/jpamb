@@ -177,7 +177,11 @@ def find_constructors(graph):
     ]
 
 def build_call_graph_from_classes(
-    classes: Iterable[dict[str, Any]], *, include_external: bool = False
+    classes: Iterable[dict[str, Any]], 
+    *,
+      include_external: bool = False,
+      dynamic: bool = False,
+      dynamic_edges: list | None = None
 ) -> dict[str, list[str]]:
     """Extract caller -> [callee, ...] from already-loaded JVM2JSON classes.
 
@@ -204,10 +208,12 @@ def build_call_graph_from_classes(
 
         for method in cls.get("methods", []):
             caller = _method_definition_id(owner, method)
+            if dynamic and method["name"] == "simulateReadObject":
+                continue
             code = method.get("code") or {}
 
             for inst in code.get("bytecode", []):
-                kind = _dynamic_kind(inst)
+                kind = _dynamic_kind(inst)if dynamic else None
 
                 if kind:
                     dynamic_sites.append((caller, kind))
