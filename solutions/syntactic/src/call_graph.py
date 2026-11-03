@@ -123,11 +123,20 @@ def _dynamic_kind(inst):
         return None
 
     name = method.get("name")
+    ref = method.get("ref") or {}
+    owner = ref.get("name", "") if isinstance(ref, dict) else ""
+    owner = owner.replace(".", "/") if isinstance(owner, str) else ""
 
-    if name in ("readObject", "simulateReadObject"):
+    if name == "simulateReadObject":
         return "deserialization"
 
-    if name in ("forName", "newInstance"):
+    if owner == "java/io/ObjectInputStream" and name == "readObject":
+        return "deserialization"
+
+    if owner == "java/lang/Class" and name in ("forName", "newInstance"):
+        return "reflection"
+
+    if owner == "java/lang/reflect/Constructor" and name == "newInstance":
         return "reflection"
 
     return None
