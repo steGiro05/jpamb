@@ -114,6 +114,58 @@ def _invoked_method_id(inst: dict[str, Any]) -> str | None:
         ref["name"], method["name"], method.get("args", []), method.get("returns")
     )
 
+def _dynamic_kind(inst):
+    if inst.get("opr") != "invoke":
+        return None
+
+    method = inst.get("method")
+    if not isinstance(method, dict):
+        return None
+
+    name = method.get("name")
+
+    if name in ("readObject", "simulateReadObject"):
+        return "deserialization"
+
+    if name in ("forName", "newInstance"):
+        return "reflection"
+
+    return None
+
+def find_constructors(graph):
+
+    # Reverse the graph
+    reverse = {m: set() for m in graph}
+
+    for caller, callees in graph.items():
+        for callee in callees:
+            if callee in reverse:
+                reverse[callee].add(caller)
+
+    # Find the sink
+    sinks = [
+        m for m in graph
+        if "__CANARY__Command.<init>" in m
+    ]
+
+    # Search backwards
+    visited = set()
+    stack = sinks[:]
+
+    while stack:
+        method = stack.pop()
+
+        if method in visited:
+            continue
+
+        visited.add(method)
+        stack.extend(reverse.get(method, []))
+
+    # Return constructors that can reach the sink
+    return [
+        m for m in visited
+        if ".<init>:" in m
+    ]
 
 def build_call_graph_from_classes(
     classes: Iterable[dict[str, Any]], *, include_external: bool = False
@@ -135,18 +187,37 @@ def build_call_graph_from_classes(
             graph[caller] = set()
 
     known_methods = set(graph)
+    dynamic_sites = []
+
+    # Step 1: Build the normal call graph
     for cls in class_data:
         owner = cls["name"]
+
         for method in cls.get("methods", []):
             caller = _method_definition_id(owner, method)
             code = method.get("code") or {}
+
             for inst in code.get("bytecode", []):
+                kind = _dynamic_kind(inst)
+
+                if kind:
+                    dynamic_sites.append((caller, kind))
+                    continue
+
                 callee = _invoked_method_id(inst)
+
                 if callee and (include_external or callee in known_methods):
                     graph[caller].add(callee)
 
-    return {caller: sorted(callees) for caller, callees in sorted(graph.items())}
+    # Step 2: Find constructors that can reach the sink
+    constructors = find_constructors(graph)
 
+    # Step 3: Connect dynamic calls to those constructors
+    for caller, kind in dynamic_sites:
+        for constructor in constructors:
+            graph[caller].add(constructor)
+
+    return {caller: sorted(callees) for caller, callees in sorted(graph.items())}
 
 def build_call_graph(
     decompiled_root: str | Path = "target/decompiled", *, include_external: bool = False
