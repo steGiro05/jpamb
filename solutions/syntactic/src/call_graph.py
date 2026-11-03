@@ -52,6 +52,30 @@ PRIMITIVES = {
     "void": "V",
 }
 
+def load_config(config_path: Path):
+    """Read sinks, stubs and dynamic sites from the fuzzer config."""
+
+    with config_path.open(encoding="utf-8") as file:
+        data = json.load(file)
+
+    sinks = []
+    stubs = {}
+    dynamic_sites = {}
+
+    for vuln in data.get("analyzer_config", {}).get("vulnerabilities", []):
+        if not vuln.get("enabled", False):
+            continue
+
+        sinks.extend(vuln.get("sinks", []))
+        stubs.update(vuln.get("stubs", {}))
+
+        for site in vuln.get("dynamic_sites", []):
+            owner = site["class_name"].replace(".", "/")
+            name = site["method_name"]
+            dynamic_sites[(owner, name)] = site["kind"]
+
+    return sinks, stubs, dynamic_sites
+
 
 def type_descriptor(value: Any) -> str:
     """Encode a JVM2JSON type as a JVM type descriptor.
@@ -114,7 +138,7 @@ def _invoked_method_id(inst: dict[str, Any]) -> str | None:
         ref["name"], method["name"], method.get("args", []), method.get("returns")
     )
 
-def _dynamic_kind(inst):
+def _dynamic_kind(inst, dynamic_sites=None):
     if inst.get("opr") != "invoke":
         return None
 
@@ -126,6 +150,8 @@ def _dynamic_kind(inst):
     ref = method.get("ref") or {}
     owner = ref.get("name", "") if isinstance(ref, dict) else ""
     owner = owner.replace(".", "/") if isinstance(owner, str) else ""
+    if dynamic_sites is not None:
+        return dynamic_sites.get((owner, name))
 
     if name == "simulateReadObject":
         return "deserialization"
