@@ -332,6 +332,19 @@ def _dot(graph: dict[str, list[str]]) -> str:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="JPAMB bytecode call graph")
+
+    parser.add_argument( 
+        "target",
+          nargs="?",
+          help="Optional JPAMB target method ID",
+    )
+    
+    parser.add_argument(
+        "--config",
+        type=Path,
+        help="Path to the fuzzer configuration JSON",
+    )
+
     parser.add_argument(
         "--decompiled",
         default="target/decompiled",
