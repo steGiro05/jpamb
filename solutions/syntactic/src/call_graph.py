@@ -210,7 +210,7 @@ def build_call_graph_from_classes(
       include_external: bool = False,
       dynamic: bool = False,
       dynamic_edges: list | None = None,
-      dynamic_sites: dict | None = None,
+      dynamic_calls: dict | None = None,
 ) -> dict[str, list[str]]:
     """Extract caller -> [callee, ...] from already-loaded JVM2JSON classes.
 
@@ -229,7 +229,7 @@ def build_call_graph_from_classes(
             graph[caller] = set()
 
     known_methods = set(graph)
-    dynamic_sites = []
+    dynamic_calls = []
 
     # Step 1: Build the normal call graph
     for cls in class_data:
@@ -242,10 +242,10 @@ def build_call_graph_from_classes(
             code = method.get("code") or {}
 
             for inst in code.get("bytecode", []):
-                kind = _dynamic_kind(inst, dynamic_sites) if dynamic else None
+                kind = _dynamic_kind(inst, dynamic_calls) if dynamic else None
 
                 if kind:
-                    dynamic_sites.append((caller, kind))
+                    dynamic_calls.append((caller, kind))
                     continue
 
                 callee = _invoked_method_id(inst)
@@ -256,7 +256,7 @@ def build_call_graph_from_classes(
     if dynamic:
         constructors = find_constructors(graph)
 
-        for caller, kind in dynamic_sites:
+        for caller, kind in dynamic_calls:
             for constructor in constructors:
                 graph[caller].add(constructor)
 
