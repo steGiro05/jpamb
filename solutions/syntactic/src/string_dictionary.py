@@ -31,12 +31,12 @@ method ID, a method name, or the file of a class (.java, .json or .class):
 
   # Analyse every method with that name (results grouped by method ID)
   uv run python solutions/syntactic/src/string_dictionary.py unsafe_dispatcher
-
-  # Analyse the class of a file (results grouped by method name)
-  uv run python solutions/syntactic/src/string_dictionary.py src/main/java/jpamb/cases/advanced/CWE470.java
+  
+  # Analyse a class using its Java file
+  # # uv run python solutions/syntactic/src/string_dictionary.py cases/jpamb/cases/advanced/CWE470.java
 
   # Analyse one class by name (results grouped by method name)
-  uv run python solutions/syntactic/src/string_dictionary.py --class jpamb.cases.Vulnerable
+  uv run python solutions/syntactic/src/string_dictionary.py --class jpamb.cases.advanced.CWE470
 
   # Get one list of entries from all benchmark classes
   uv run python solutions/syntactic/src/string_dictionary.py --all
@@ -91,16 +91,21 @@ FILE_SUFFIXES = {".java", ".json", ".class"}
 
 @dataclass(frozen=True)
 class Value:
-    """Possible string constants and array identities held by one value."""
+    """Possible string constants, arrays and unknown values."""
 
     strings: frozenset[str] = frozenset()
     arrays: frozenset[int] = frozenset()
+    may_be_unknown: bool = False
 
     def join(self, other):
-        return Value(self.strings | other.strings, self.arrays | other.arrays)
+        return Value(
+            strings=self.strings | other.strings,
+            arrays=self.arrays | other.arrays,
+            may_be_unknown=self.may_be_unknown or other.may_be_unknown,
+        )
 
 
-UNKNOWN = Value()
+UNKNOWN = Value(may_be_unknown=True)
 
 
 @dataclass
@@ -190,8 +195,12 @@ def concat_parts(instruction, args, bootstrap):
     for char in recipe:
         if char == "\u0001":
             value = next(dynamic, UNKNOWN)
-            # A single known constant is part of the text; anything else is a hole.
-            add(next(iter(value.strings)) if len(value.strings) == 1 else None)
+
+            # Only use a constant if there are no unknown possibilities.
+            if len(value.strings) == 1 and not value.may_be_unknown:
+                add(next(iter(value.strings)))
+            else:
+                add(None)
         elif char == "\u0002":
             add(str(next(extra, "")))
         else:
