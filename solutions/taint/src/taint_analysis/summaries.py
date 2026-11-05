@@ -51,11 +51,11 @@ def _method(code: str) -> jvm.AbsMethodID:
 
 
 SIMULATE_RESOLVE_CLASS = _method(
-    "jpamb.cases.Vulnerable.simulateResolveClassName:"
+    "jpamb.cases.advanced.CWE502.simulateResolveClassName:"
     "(Ljava/lang/String;)Ljava/lang/String;"
 )
 SIMULATE_READ_OBJECT = _method(
-    "jpamb.cases.Vulnerable.simulateReadObject:"
+    "jpamb.cases.advanced.CWE502.simulateReadObject:"
     "(Ljava/lang/String;)Ljava/lang/Object;"
 )
 CLASS_FOR_NAME = _method(

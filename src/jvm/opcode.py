@@ -192,7 +192,31 @@ class Push(Opcode):
     def __str__(self):
         return f"push:{self.type} {self.value}"
 
+@dataclass(frozen=True, order=True)
+class Pop(Opcode):
+    """The pop opcode that removes the top value from the stack."""
 
+    @classmethod
+    def from_json(cls, json: dict) -> "Opcode":
+        return cls(offset=json["offset"])
+
+    def real(self) -> str:
+        return "pop"
+
+    def semantics(self) -> str | None:
+        semantics = """
+        bc[i].opr = 'pop'
+        -------------------------[pop]
+        bc |- (i, s + [value]) -> (i+1, s)
+        """
+        return None
+
+    def mnemonic(self) -> str:
+        return "pop"
+
+    def __str__(self):
+        return "pop"
+    
 @dataclass(frozen=True, order=True)
 class Negate(Opcode):
     """The new array opcode"""
@@ -706,6 +730,7 @@ class CmpOpr(enum.Enum):
     Le = enum.auto()
     Ge = enum.auto()
     Gt = enum.auto()
+    Is = enum.auto()
 
     @staticmethod
     def from_str(name: str) -> "CmpOpr":
@@ -733,6 +758,7 @@ CMP_OPRS = {
     "le": CmpOpr.Le,
     "ge": CmpOpr.Ge,
     "gt": CmpOpr.Gt,
+    "is": CmpOpr.Is,
 }
 
 
@@ -986,13 +1012,17 @@ class Put(Opcode):
 
     @classmethod
     def from_json(cls, json: dict) -> "Opcode":
-        field = classfile.AbsFieldID(
-            classname=ClassName.from_slashed(json["field"]["class"]),
-            extension=classfile.FieldID(
-                name=json["field"]["name"],
-                type=jvm_type.Type.from_json(json["field"]["type"]),
-            ),
-        )
+        field_data = json.get("field")
+        if not isinstance(field_data, dict):
+            raise NotImplementedError(f"Cannot handle field data {field_data!r}")
+
+        try:
+            field = classfile.AbsFieldID.from_json(field_data)
+        except (KeyError, TypeError, ValueError, NotImplementedError) as error:
+            raise NotImplementedError(
+                f"Cannot parse field data {field_data!r}"
+            ) from error
+
         return cls(offset=json["offset"], static=json["static"], field=field)
 
     def real(self) -> str:
@@ -1000,7 +1030,21 @@ class Put(Opcode):
         return f"{opcode} {self.field}"
 
     def semantics(self) -> str | None:
-        return None
+        if self.static:
+            return """
+            bc[i].opr = 'put'
+            bc[i].static = true
+            bc[i].field = f
+            -------------------------[putstatic]
+            bc |- (i, s + [v], globals) -> (i+1, s, globals[f := v])
+            """
+        return """
+        bc[i].opr = 'put'
+        bc[i].static = false
+        bc[i].field = f
+        -------------------------[putfield]
+        bc |- (i, s + [obj_ref, v], heap) -> (i+1, s, heap[obj_ref.f := v])
+        """
 
     def mnemonic(self) -> str:
         return "putstatic" if self.static else "putfield"
@@ -1321,6 +1365,7 @@ OPCODES = {
     "invoke_static": InvokeStatic,
     "invoke_interface": InvokeInterface,
     "invoke_special": InvokeSpecial,
+    "invoke_dynamic": InvokeDynamic,
     "store": Store,
     "binary": Binary,
     "load": Load,
@@ -1332,4 +1377,5 @@ OPCODES = {
     "throw": Throw,
     "incr": Incr,
     "goto": Goto,
+    "pop": Pop,
 }

@@ -76,9 +76,9 @@ Constants start with no labels, while entry-method parameter `i` starts with `{p
 Security sinks are defined explicitly together with their sensitive argument
 positions. The initial configuration contains
 `Class.forName(String)` argument 0 for CWE-470 and
-`Vulnerable.simulateReadObject(String)` argument 0 for CWE-502.
+`CWE502.simulateReadObject(String)` argument 0 for CWE-502.
 `simulateResolveClassName(String)` is a taint-propagating summary, not a sink.
-`Vulnerable.canary()` is treated separately as the dynamic exploit oracle: a
+The CWE-specific `canary()` is treated separately as the dynamic exploit oracle: a
 security sink indicates a potentially dangerous flow, while the canary confirms
 that the simulated exploit succeeded.
 

@@ -120,7 +120,9 @@ def test_untainted_sink_input_does_not_create_a_finding() -> None:
 
 
 def test_canary_is_not_a_static_security_sink() -> None:
-    canary = jvm.AbsMethodID.decode("jpamb.cases.Vulnerable.canary:()V")
+    canary = jvm.AbsMethodID.decode(
+        "jpamb.cases.advanced.CWE502.canary:()V"
+    )
     instruction = static_call(9, canary)
 
     assert inspect_sinks(
