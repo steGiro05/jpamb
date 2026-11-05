@@ -977,6 +977,40 @@ class Get(Opcode):
 
 
 @dataclass(frozen=True, order=True)
+class Put(Opcode):
+    """Store a value in a static or instance field."""
+
+    field: classfile.AbsFieldID
+    _: KW_ONLY
+    static: bool
+
+    @classmethod
+    def from_json(cls, json: dict) -> "Opcode":
+        field = classfile.AbsFieldID(
+            classname=ClassName.from_slashed(json["field"]["class"]),
+            extension=classfile.FieldID(
+                name=json["field"]["name"],
+                type=jvm_type.Type.from_json(json["field"]["type"]),
+            ),
+        )
+        return cls(offset=json["offset"], static=json["static"], field=field)
+
+    def real(self) -> str:
+        opcode = "putstatic" if self.static else "putfield"
+        return f"{opcode} {self.field}"
+
+    def semantics(self) -> str | None:
+        return None
+
+    def mnemonic(self) -> str:
+        return "putstatic" if self.static else "putfield"
+
+    def __str__(self):
+        kind = "static" if self.static else "field"
+        return f"put {kind} {self.field}"
+
+
+@dataclass(frozen=True, order=True)
 class Ifz(Opcode):
     """The ifz opcode that performs conditional jumps based on comparison with zero/null.
 
@@ -1292,6 +1326,7 @@ OPCODES = {
     "load": Load,
     "if": If,
     "get": Get,
+    "put": Put,
     "ifz": Ifz,
     "new": New,
     "throw": Throw,

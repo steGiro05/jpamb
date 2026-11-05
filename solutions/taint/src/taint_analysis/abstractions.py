@@ -83,7 +83,7 @@ class TaintSet:
 
 @dataclass(frozen=True, slots=True)
 class AllocationSite:
-    """An object allocated by a bytecode instruction in the analyzed program."""
+    """An object materialized by a bytecode instruction in the analyzed program."""
 
     pc: PC
 
@@ -245,13 +245,18 @@ class FieldLocation:
 
 
 @dataclass(frozen=True, slots=True)
+class StaticFieldLocation:
+    field: jvm.AbsFieldID
+
+
+@dataclass(frozen=True, slots=True)
 class ArrayContentsLocation:
     """The single abstract contents cell of one array allocation site."""
 
     target: HeapTarget
 
 
-type HeapLocation = FieldLocation | ArrayContentsLocation
+type HeapLocation = FieldLocation | StaticFieldLocation | ArrayContentsLocation
 
 
 @dataclass(frozen=True, slots=True)
@@ -367,3 +372,6 @@ class TaintState:
         locals_ = list(self.locals)
         locals_[index] = value
         return type(self)(tuple(locals_), self.stack, self.heap)
+
+    def with_heap(self, heap: TaintHeap) -> Self:
+        return type(self)(self.locals, self.stack, heap)

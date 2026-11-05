@@ -49,7 +49,8 @@ This separation is necessary because a JVM reference can simultaneously point to
 
 The initial implementation uses three kinds of abstract reference target:
 
-- an allocation site, identified by the program counter of a `new` instruction;
+- an allocation site, identified by the program counter of an object-producing
+  instruction (`new`, or the load site of a constant string);
 - `EXTERNAL_pi`, for an object supplied through entry-method parameter `pi` and therefore allocated outside the analyzed program;
 - `NULL`, which preserves the possibility of a null reference through state joins.
 
@@ -61,19 +62,46 @@ An abstract JVM state contains abstract locals, an abstract operand stack, and a
 PC -> (locals, operand stack, heap)
 ```
 
-Heap objects are represented by non-null abstract targets. Ordinary objects use their allocation site, identified by the program counter of the allocating instruction, while entry-parameter objects use their synthetic `EXTERNAL_pi` target. This keeps the abstract heap finite, at the cost of merging objects created at the same site. `NULL` never identifies a heap cell.
+Heap objects are represented by non-null abstract targets. Ordinary objects use
+their allocation site, identified by the program counter of the instruction
+that materializes the reference, while entry-parameter objects use their
+synthetic `EXTERNAL_pi` target. This keeps the abstract heap finite, at the cost
+of merging objects produced at the same site. `NULL` never identifies a heap
+cell.
 
 ## Propagation rules
 
 Constants start with no labels, while entry-method parameter `i` starts with `{pi}`. Loads, stores, casts, and returns preserve labels. Operations such as string concatenation combine operand labels using union. Calls propagate argument labels to callee parameters and return labels back to callers. At control-flow merges, states are joined component-wise.
 
-Security sinks are defined explicitly together with their sensitive argument positions. Initial examples include reflection and the project's simulated deserialization operations. `Vulnerable.canary()` is treated separately as the dynamic exploit oracle: a security sink indicates a potentially dangerous flow, while the canary confirms that the simulated exploit succeeded.
+Security sinks are defined explicitly together with their sensitive argument
+positions. The initial configuration contains
+`Class.forName(String)` argument 0 for CWE-470 and
+`Vulnerable.simulateReadObject(String)` argument 0 for CWE-502.
+`simulateResolveClassName(String)` is a taint-propagating summary, not a sink.
+`Vulnerable.canary()` is treated separately as the dynamic exploit oracle: a
+security sink indicates a potentially dangerous flow, while the canary confirms
+that the simulated exploit succeeded.
 
-Unsupported library behavior, reflection, and simulated deserialization are handled through trusted method summaries. Only methods explicitly configured as trusted sanitizers may remove taint. Ordinary comparisons, allowlists, or regular-expression checks are not automatically assumed to sanitize a value. The analysis guarantee is therefore conditional on the correctness of sink, sanitizer, and library summaries.
+Unsupported library behavior, reflection, and simulated deserialization are
+handled through trusted method summaries. The initial summaries propagate taint
+through the two simulated deserialization helpers, reflective class loading and
+instantiation, string operations, and dynamic string concatenation. Only methods
+explicitly configured as trusted sanitizers may remove taint; the initial
+sanitizer set is empty. Ordinary comparisons, allowlists, or regular-expression
+checks are not automatically assumed to sanitize a value. The analysis guarantee
+is therefore conditional on the correctness of sink, sanitizer, and library
+summaries.
 
 ## Fixpoint computation
 
 The analysis uses the existing worklist architecture. A successor program point is processed again only when joining an incoming state makes its stored state larger. The analysis terminates when the worklist is empty, rather than after an arbitrary number of steps.
+
+The initial bytecode model does not expose exception-handler edges. An explicit
+`throw` therefore terminates the current abstract path; propagation into catch
+blocks is deferred until exception-table information is retained by the common
+JVM model. This limitation does not affect the normal sink-reaching paths in the
+initial JPAMB vulnerability cases, but it is part of the whole-analysis
+soundness boundary.
 
 No widening is required for the taint domain. The label set, program points, abstract reference targets, and context-insensitive return locations are finite, so abstract states can grow only a finite number of times before reaching a fixpoint.
 
