@@ -102,21 +102,23 @@ def test_tainted_deserialization_input_creates_a_finding() -> None:
     state = TaintState(locals=(), stack=(TaintValue.external_reference(0),))
 
     findings = inspect_sinks(
-        pc(8), instruction, state, call_graph_distance=2
+        pc(8), instruction, state, distance_to_exploit_target=2
     )
 
     assert len(findings) == 1
     finding = findings[0]
     assert finding.category == "CWE-502"
     assert finding.relevant_parameters == (0,)
-    assert finding.call_graph_distance == 2
+    assert finding.distance_to_exploit_target == 2
 
 
 def test_untainted_sink_input_does_not_create_a_finding() -> None:
     instruction = static_call(8, CLASS_FOR_NAME)
     state = TaintState(locals=(), stack=(TaintValue.reference([]),))
 
-    assert inspect_sinks(pc(8), instruction, state, call_graph_distance=0) == ()
+    assert inspect_sinks(
+        pc(8), instruction, state, distance_to_exploit_target=0
+    ) == ()
 
 
 def test_canary_is_not_a_static_security_sink() -> None:
@@ -126,5 +128,5 @@ def test_canary_is_not_a_static_security_sink() -> None:
     instruction = static_call(9, canary)
 
     assert inspect_sinks(
-        pc(9), instruction, TaintState(locals=()), call_graph_distance=0
+        pc(9), instruction, TaintState(locals=()), distance_to_exploit_target=0
     ) == ()

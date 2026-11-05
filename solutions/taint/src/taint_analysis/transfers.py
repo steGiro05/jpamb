@@ -40,6 +40,10 @@ def transfer_base(pc: PC, instruction: jvm.Opcode, state: TaintState) -> TaintSt
             (value,), after = state.pop()
             return after.store(index, value)
 
+        case jvm.Pop():
+            _, after = state.pop()
+            return after
+
         case jvm.Binary():
             (left, right), after = state.pop(2)
             if left.is_reference or right.is_reference:

@@ -61,6 +61,17 @@ def test_load_and_store_copy_taint_without_changing_it() -> None:
     assert stored.stack == ()
 
 
+def test_pop_discards_only_the_top_stack_value() -> None:
+    initial = TaintState(
+        locals=(),
+        stack=(TaintValue.parameter(0), TaintValue.parameter(1)),
+    )
+
+    result = transfer_base(pc(), jvm.Pop(offset=0), initial)
+
+    assert result.stack == (TaintValue.parameter(0),)
+
+
 def test_binary_operation_joins_operand_labels() -> None:
     initial = TaintState(
         locals=(),

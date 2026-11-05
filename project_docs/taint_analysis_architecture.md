@@ -111,13 +111,17 @@ The internal result is a structured set of analysis hints. Each finding should c
 
 ```text
 TaintFinding
-  sink method and program counter
+  taint sink method and program counter
   labels reaching the sink
   relevant entry parameters
-  call-graph distance to the sink
+  call-graph distance to the exploit target
 ```
 
-The call-graph distance is the minimum number of call edges from a method to the sink. It is computed from the call graph, not from the taint lattice, and can be used as part of the fuzzer's fitness function. A single call path is not required because a path-insensitive may-analysis may represent several paths simultaneously.
+The call-graph distance is the minimum number of call edges from a method to
+the exploit target (the canary), not to the taint sink. It is computed from the
+call graph, not from the taint lattice, and can be used as part of the fuzzer's
+fitness function. A single call path is not required because a path-insensitive
+may-analysis may represent several paths simultaneously.
 
 Python dataclasses will be used internally. S-expressions may be used for persistence and debugging to remain consistent with the existing framework. The combined analyzer will eventually translate its result into the standard JPAMB prediction format.
 

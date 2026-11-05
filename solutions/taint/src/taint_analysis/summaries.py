@@ -39,7 +39,7 @@ class TaintFinding:
     call_site: PC
     labels: TaintSet
     category: str
-    call_graph_distance: int
+    distance_to_exploit_target: int
 
     @property
     def relevant_parameters(self) -> tuple[int, ...]:
@@ -155,12 +155,12 @@ def inspect_sinks(
     instruction: InvokeInstruction,
     state: TaintState,
     *,
-    call_graph_distance: int,
+    distance_to_exploit_target: int,
     sinks: tuple[SinkSpec, ...] = DEFAULT_SINKS,
 ) -> tuple[TaintFinding, ...]:
     """Record tainted data reaching configured sensitive invocation inputs."""
 
-    if call_graph_distance < 0:
+    if distance_to_exploit_target < 0:
         raise ValueError("call-graph distance cannot be negative")
     operands = pop_invocation_operands(instruction, state)
     findings = []
@@ -181,7 +181,7 @@ def inspect_sinks(
                     call_site=pc,
                     labels=labels,
                     category=sink.category,
-                    call_graph_distance=call_graph_distance,
+                    distance_to_exploit_target=distance_to_exploit_target,
                 )
             )
     return tuple(findings)

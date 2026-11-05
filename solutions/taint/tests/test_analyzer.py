@@ -54,7 +54,7 @@ def test_analyzer_propagates_taint_through_call_and_finds_sink() -> None:
     call_site = PC(entry.id, 1)
     graph = CallGraph(
         edges={call_site: (helper.id,)},
-        distances_to_sink={entry.id: 1},
+        distances_to_exploit_target={entry.id: 1},
     )
 
     result = TaintAnalyzer(Program([entry, helper]), graph).analyze(entry.id)

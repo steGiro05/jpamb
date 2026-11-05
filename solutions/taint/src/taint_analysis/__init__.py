@@ -42,6 +42,8 @@ from taint_analysis.summaries import (
     sanitizer_summary,
 )
 from taint_analysis.analyzer import AnalysisResult, CallGraph, TaintAnalyzer
+from taint_analysis.call_graph_input import call_graph_from_json
+from taint_analysis.report import analysis_hints, finding_hint
 
 __all__ = [
     "NULL_TARGET",
@@ -68,6 +70,9 @@ __all__ = [
     "AnalysisResult",
     "CallGraph",
     "TaintAnalyzer",
+    "call_graph_from_json",
+    "analysis_hints",
+    "finding_hint",
     "CLASS_FOR_NAME",
     "CLASS_NEW_INSTANCE",
     "SIMULATE_READ_OBJECT",

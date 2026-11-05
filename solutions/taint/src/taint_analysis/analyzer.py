@@ -43,22 +43,26 @@ class CallGraph:
     """Call targets and precomputed method distances supplied by prior analysis."""
 
     edges: Mapping[PC, tuple[jvm.AbsMethodID, ...]] = field(default_factory=dict)
-    distances_to_sink: Mapping[jvm.AbsMethodID, int] = field(default_factory=dict)
+    distances_to_exploit_target: Mapping[jvm.AbsMethodID, int] = field(
+        default_factory=dict
+    )
 
     def __post_init__(self) -> None:
         edges = {pc: tuple(targets) for pc, targets in self.edges.items()}
-        distances = dict(self.distances_to_sink)
+        distances = dict(self.distances_to_exploit_target)
         if any(distance < 0 for distance in distances.values()):
             raise ValueError("call-graph distances cannot be negative")
         object.__setattr__(self, "edges", MappingProxyType(edges))
-        object.__setattr__(self, "distances_to_sink", MappingProxyType(distances))
+        object.__setattr__(
+            self, "distances_to_exploit_target", MappingProxyType(distances)
+        )
 
     def targets(self, pc: PC) -> tuple[jvm.AbsMethodID, ...]:
         return self.edges.get(pc, ())
 
     def distance(self, method: jvm.AbsMethodID) -> int:
         try:
-            return self.distances_to_sink[method]
+            return self.distances_to_exploit_target[method]
         except KeyError as error:
             raise ValueError(f"call graph has no sink distance for {method}") from error
 
@@ -85,6 +89,7 @@ class TaintAnalyzer:
         jvm.CheckCast,
         jvm.Incr,
         jvm.Dup,
+        jvm.Pop,
     )
     _HEAP_INSTRUCTIONS = (
         jvm.New,
@@ -194,7 +199,7 @@ class TaintAnalyzer:
                 pc,
                 instruction,
                 state,
-                call_graph_distance=self.call_graph.distance(pc.method),
+                distance_to_exploit_target=self.call_graph.distance(pc.method),
                 sinks=self.sinks,
             ):
                 self._record_finding(finding)
@@ -275,7 +280,7 @@ class TaintAnalyzer:
             incoming.sink,
             incoming.call_site,
             incoming.category,
-            incoming.call_graph_distance,
+            incoming.distance_to_exploit_target,
         )
         previous = self.findings.get(key)
         if previous is None:
@@ -286,5 +291,5 @@ class TaintAnalyzer:
             call_site=incoming.call_site,
             labels=previous.labels | incoming.labels,
             category=incoming.category,
-            call_graph_distance=incoming.call_graph_distance,
+            distance_to_exploit_target=incoming.distance_to_exploit_target,
         )
