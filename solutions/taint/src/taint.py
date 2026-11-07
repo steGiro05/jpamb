@@ -17,8 +17,6 @@ from taint_analysis import TaintAnalyzer, analysis_hints, call_graph_from_json
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 CALL_GRAPH_SCRIPT = PROJECT_ROOT / "solutions/syntactic/src/call_graph.py"
 DEFAULT_CONFIG = PROJECT_ROOT / "solutions/dynamic/src/config.json"
-CONFIG_ENVIRONMENT_VARIABLE = "JPAMB_ANALYZER_CONFIG"
-CALL_GRAPH_ENVIRONMENT_VARIABLE = "JPAMB_CALL_GRAPH_PATH"
 
 
 def load_call_graph(path: Path) -> Mapping[str, Any]:
@@ -43,7 +41,7 @@ def request_call_graph(
     """Run the syntactic call graph and decode its JSON result."""
 
     if config_path is None:
-        configured = os.environ.get(CONFIG_ENVIRONMENT_VARIABLE)
+        configured = os.environ.get("JPAMB_ANALYZER_CONFIG")
         config_path = Path(configured) if configured else DEFAULT_CONFIG
 
     completed = subprocess.run(
@@ -75,7 +73,7 @@ def request_call_graph(
 def obtain_call_graph(entry_method: jvm.AbsMethodID) -> Mapping[str, Any]:
     """Prefer the shared syntactic artifact, with a standalone fallback."""
 
-    precomputed = os.environ.get(CALL_GRAPH_ENVIRONMENT_VARIABLE)
+    precomputed = os.environ.get("JPAMB_CALL_GRAPH_PATH")
     if precomputed:
         return load_call_graph(Path(precomputed))
     return request_call_graph(entry_method)
