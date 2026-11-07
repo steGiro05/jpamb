@@ -357,6 +357,14 @@ def find_stubs(graph: dict[str, list[str]], stubs: dict[str, str]) -> dict[str, 
                 break
     return found
 
+def stub_site_keys(found_stubs: dict[str, str]) -> dict[tuple[str, str], str]:
+    """(owner, name) -> kind for stubs, so that calls to them are recognised as dynamic sites."""
+    keys: dict[tuple[str, str], str] = {}
+    for mid, kind in found_stubs.items():
+        owner, name = split_method_id(mid)
+        keys[(owner.replace(".", "/"), name)] = kind
+    return keys
+
 def find_sinks(graph: dict[str, list[str]], specs: Iterable[str]) -> list[str]:
     specs = list(specs)
     return sorted(mid for mid in graph if any(spec in mid for spec in specs))
@@ -382,8 +390,10 @@ def add_dynamic_edges(
     stubs: dict[str, str],
     sinks: Iterable[str],
 ) -> tuple[dict[str, list[str]], list[dict[str, str]]]:
+    # A stub (e.g. simulateReadObject) behaves like a library readObject: the call is a
+    # dynamic site of its CALLER, so the stub is flattened out of the graph (like Class.forName).
     new_graph = {
-        method: ([] if method in stubs else list(callees))
+        method: ([] if method in stubs else [c for c in callees if c not in stubs])
         for method, callees in graph.items()
     }
     closure = callers_closure(new_graph, sinks)
@@ -392,8 +402,6 @@ def add_dynamic_edges(
     kinds: dict[str, set[str]] = defaultdict(set)
     for method, site_kinds in sites.items():
         kinds[method] |= site_kinds
-    for method, kind in stubs.items():
-        kinds[method].add(kind)
 
     dynamic_edges: list[dict[str, str]] = []
     for caller in sorted(kinds):
@@ -456,6 +464,55 @@ def select_scope(
 
     tops = {defined[m] for m in entries}
     return [c for c in classes if top_level(c["name"]) in tops], entries
+
+def _extract_call_sites(
+    scope_classes: list[dict[str, Any]],
+    graph: dict[str, list[str]],
+    dynamic_edges: list[dict[str, str]],
+    configured_sites: dict[tuple[str, str], str]
+) -> list[dict[str, Any]]:
+    """Build the call_sites list with instruction indices and resolved targets."""
+    call_sites = []
+    
+    for cls in scope_classes:
+        owner = cls["name"]
+        for method in cls.get("methods", []):
+            caller = _method_definition_id(owner, method)
+            
+            # Skip if this method was filtered out of the final graph
+            if caller not in graph:
+                continue
+                
+            code = method.get("code") or {}
+            for idx, inst in enumerate(code.get("bytecode", [])):
+                callee = _invoked_method_id(inst)
+                kind = _dynamic_kind(inst, configured_sites)
+                
+                # Case 1: Standard static method invocation
+                if callee and callee in graph.get(caller, []):
+                    call_sites.append({
+                        "caller": caller,
+                        "instruction_index": idx,
+                        "resolved_callees": [callee]
+                    })
+                    
+                # Case 2: Dynamic invocation (e.g. Class.forName) resolved by edge linking
+                elif kind:
+                    resolved = [
+                        e["callee"] for e in dynamic_edges 
+                        if e["caller"] == caller and e["kind"] == kind and e["callee"] in graph.get(caller, [])
+                    ]
+                    if resolved:
+                        # Convert to sorted list for deterministic JSON output
+                        call_sites.append({
+                            "caller": caller,
+                            "instruction_index": idx,
+                            "resolved_callees": sorted(list(set(resolved))),
+                            "dynamic_kind": kind,
+                            "invoked_method": callee
+                        })
+                        
+    return call_sites
 
 def _dot(graph: dict[str, list[str]], dynamic_edges: Iterable[dict[str, str]] = ()) -> str:
     def quote(node: str) -> str:
@@ -535,10 +592,10 @@ def main(argv: list[str] | None = None) -> int:
                 }
             else:
                 configured = config_sites
+            stub_sites = find_stubs(graph, stubs)
+            configured = {**configured, **stub_site_keys(stub_sites)}
             sites = find_dynamic_sites(scope, configured)
-            graph, dynamic_edges = add_dynamic_edges(
-                graph, sites, find_stubs(graph, stubs), sinks
-            )
+            graph, dynamic_edges = add_dynamic_edges(graph, sites, stub_sites, sinks)
             reached: set[str] = set()
             for entry in entries:
                 reached.update(reachable_methods(graph, entry))
@@ -551,7 +608,19 @@ def main(argv: list[str] | None = None) -> int:
                 edge for edge in dynamic_edges
                 if edge["caller"] in graph and edge["callee"] in graph
             ]
-            payload = {"graph": graph, "dynamic_edges": dynamic_edges, "sinks": sinks}
+            
+            # --- AGGIUNTA FONDAMENTALE ---
+            # Calcola i call_sites prima di fare il pack del JSON
+            call_sites = _extract_call_sites(scope, graph, dynamic_edges, configured)
+            
+            # Ora il payload ha tutti i campi richiesti dal README (incluso exploit_targets per retrocompatibilità)
+            payload = {
+                "graph": graph,
+                "call_sites": call_sites,
+                "dynamic_edges": dynamic_edges,
+                "exploit_targets": sinks,
+                "sinks": sinks
+            }
         else:
             # Keep the original CLI and its plain-JSON output intact.
             dynamic_edges = []

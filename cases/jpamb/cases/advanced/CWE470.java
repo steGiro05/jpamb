@@ -90,4 +90,15 @@ public class CWE470 {
             return;
         }
     }
+
+    @Case("(s'Any', i'0') -> ok")
+    @Case("(s'__CANARY__', i'1') -> assertion error")
+    public static void two_step_dispatcher(String ctl, int guard) {
+        if (guard != 0) {
+            return;
+        }
+        else{
+            unsafe_dispatcher(ctl);
+        }
+    }
 }

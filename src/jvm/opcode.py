@@ -759,6 +759,7 @@ CMP_OPRS = {
     "ge": CmpOpr.Ge,
     "gt": CmpOpr.Gt,
     "is": CmpOpr.Is,
+    "isnot": CmpOpr.Ne,
 }
 
 

@@ -13,10 +13,11 @@ import jvm
 
 from taint_analysis import TaintAnalyzer, analysis_hints, call_graph_from_json
 
+def _debug_log(*args, **kwargs):
+    with open('debug.log', 'a', encoding='utf-8') as f:
+        print(*args, file=f, **kwargs)
 
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
-CALL_GRAPH_SCRIPT = PROJECT_ROOT / "solutions/syntactic/src/call_graph.py"
-DEFAULT_CONFIG = PROJECT_ROOT / "solutions/dynamic/src/config.json"
+DEFAULT_CONFIG = Path("solutions/dynamic/src/config.json")
 
 
 def load_call_graph(path: Path) -> Mapping[str, Any]:
@@ -46,13 +47,11 @@ def request_call_graph(
 
     completed = subprocess.run(
         [
-            sys.executable,
-            str(CALL_GRAPH_SCRIPT),
+            "call-graph", 
             entry_method.encode(),
             "--config",
             str(config_path),
         ],
-        cwd=PROJECT_ROOT,
         capture_output=True,
         text=True,
         check=False,
@@ -111,6 +110,7 @@ def analyse() -> int:
         print(f"taint-analysis: {error}", file=sys.stderr)
         return 1
 
+    _debug_log(json.dumps(hints, indent=2, sort_keys=True))
     print(json.dumps(hints, indent=2, sort_keys=True))
     return 0
 

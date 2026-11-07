@@ -5,11 +5,6 @@ import jpamb
 import jvm
 import jvm.state as jvmc
 
-
-def _debug_log(*args, **kwargs):
-    with open("debug.log", "a", encoding="utf-8") as f:
-        print(*args, file=f, **kwargs)
-
 def to_int32(value: int) -> int:
     """
     Convert a Python integer to a signed Java 32-bit integer.
