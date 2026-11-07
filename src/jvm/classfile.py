@@ -205,3 +205,22 @@ class AbsFieldID(Absolute[FieldID]):
     @classmethod
     def from_sexpr(cls, expr: sexpr.SExpr) -> Self:
         return cls.decode(sexpr.to_str(expr))
+
+    @classmethod
+    def from_json(cls, json: JSON) -> "Self":
+        if not isinstance(json, dict):
+            raise NotImplementedError(f"Cannot handle {json!r}")
+
+        class_ref = json.get("class") or json.get("ref")
+        if isinstance(class_ref, dict):
+            class_name_str = json_str(class_ref.get("name"))
+        else:
+            class_name_str = json_str(class_ref)
+
+        return cls(
+            classname=ClassName.from_slashed(class_name_str),
+            extension=FieldID(
+                name=json_str(json["name"]),
+                type=Type.from_json(json["type"]),
+            ),
+        )
