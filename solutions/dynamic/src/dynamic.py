@@ -381,8 +381,8 @@ class NodeSearch:
 def analyse():
     methodid = jpamb.getmethodid(
         "dynamic",
-        "1.0",
-        "bests analyzers ",
+        "0.1.0",
+        "DTU Project Group 8",
         ["dynamic", "python", "fuzzing", "random", "dictionary", "syntatic"],
         for_science=True,
     )
