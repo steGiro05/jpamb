@@ -33,7 +33,7 @@ method ID, a method name, or the file of a class (.java, .json or .class):
   uv run python solutions/syntactic/src/string_dictionary.py unsafe_dispatcher
   
   # Analyse a class using its Java file
-  # # uv run python solutions/syntactic/src/string_dictionary.py cases/jpamb/cases/advanced/CWE470.java
+  uv run python solutions/syntactic/src/string_dictionary.py cases/jpamb/cases/advanced/CWE470.java
 
   # Analyse one class by name (results grouped by method name)
   uv run python solutions/syntactic/src/string_dictionary.py --class jpamb.cases.advanced.CWE470
