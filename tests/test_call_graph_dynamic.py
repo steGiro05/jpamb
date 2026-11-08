@@ -100,6 +100,63 @@ class DynamicCallGraphTests(unittest.TestCase):
             self.assertEqual({edge["kind"] for edge in data["dynamic_edges"]},
                              {"reflection", "deserialization"})
 
+    def test_real_dynamic_invokes_keep_separate_opcode_indices(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            sample = classes()
+            sample[0]["methods"].append(method(
+                "threeSites",
+                {"opr": "push", "offset": 90},
+                invoke("java/lang/Class", "forName"),
+                {"opr": "push", "offset": 150},
+                invoke("java/lang/Class", "forName"),
+                invoke("java/io/ObjectInputStream", "readObject"),
+            ))
+            for index, cls in enumerate(sample):
+                (root / f"{index}.json").write_text(json.dumps(cls), encoding="utf-8")
+            config = root / "config.json"
+            config.write_text(json.dumps({"analyzer_config": {"vulnerabilities": [{
+                "enabled": True,
+                "exploit_targets": ["__CANARY__Command.<init>"],
+                "dynamic_sites": [
+                    {"class_name": "java.lang.Class", "method_name": "forName", "kind": "reflection"},
+                    {"class_name": "java.io.ObjectInputStream", "method_name": "readObject",
+                     "kind": "deserialization"},
+                ],
+                "stubs": {"simulateReadObject": "deserialization"},
+            }]}}), encoding="utf-8")
+            out = root / "out.json"
+            self.assertEqual(main([f"{PREFIX}.threeSites:()V", "--decompiled", str(root),
+                                   "--config", str(config), "--output", str(out)]), 0)
+            payload = json.loads(out.read_text(encoding="utf-8"))
+            caller = f"{PREFIX}.threeSites:()V"
+            edges = [e for e in payload["dynamic_edges"] if e["caller"] == caller]
+            self.assertTrue(edges)
+            self.assertEqual({(e["kind"], e["instruction_index"]) for e in edges},
+                             {("reflection", 1), ("reflection", 3), ("deserialization", 4)})
+            callsites = [s for s in payload["call_sites"] if s["caller"] == caller]
+            self.assertEqual([s["instruction_index"] for s in callsites], [1, 3, 4])
+            self.assertTrue(all(s["resolved_callees"] == [] for s in callsites))
+
+    def test_stub_dynamic_edges_have_no_misleading_opcode_index(self):
+        from call_graph import add_dynamic_edges
+        graph = build_call_graph_from_classes(classes())
+        mock = f"{PREFIX}.simulateReadObject:()V"
+        canary = f"{PREFIX}$__CANARY__Command.<init>:()V"
+        _, edges = add_dynamic_edges(graph, {}, {mock: "deserialization"}, [canary])
+        stub_edges = [e for e in edges if e["caller"] == mock]
+        self.assertTrue(stub_edges)
+        self.assertTrue(all("instruction_index" not in e for e in stub_edges))
+
+    def test_legacy_dynamic_edges_also_use_opcode_index(self):
+        edges = []
+        graph = build_call_graph_from_classes(classes(), dynamic=True, dynamic_edges=edges)
+        caller = f"{PREFIX}.reflect:()V"
+        self.assertIn(caller, graph)
+        self.assertTrue(any(e["caller"] == caller and e["instruction_index"] == 0
+                            and e["kind"] == "reflection" for e in edges))
+
+
 
 if __name__ == "__main__":
     unittest.main()

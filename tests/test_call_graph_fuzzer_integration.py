@@ -98,7 +98,7 @@ class FuzzerCompatibilityTests(unittest.TestCase):
 
     def test_fuzzer_deserialization_contract_and_stub(self):
         data = self.run_target(f"{PREFIX}.deserialize:()V")
-        self.assertEqual(set(data), {"graph", "dynamic_edges", "sinks"})
+        self.assertEqual(set(data), {"graph", "call_sites", "dynamic_edges", "exploit_targets", "sinks"})
         mock = f"{PREFIX}.simulateReadObject:()V"
         caller = f"{PREFIX}.deserialize:()V"
         canary = f"{PREFIX}$__CANARY__Command.<init>:()V"
@@ -144,7 +144,7 @@ class FuzzerCompatibilityTests(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0, result.stderr)
         payload = json.loads(result.stdout)
-        self.assertEqual(set(payload), {"graph", "dynamic_edges", "sinks"})
+        self.assertEqual(set(payload), {"graph", "call_sites", "dynamic_edges", "exploit_targets", "sinks"})
 
     def test_legacy_builder_accepts_dynamic_site_config(self):
         graph = build_call_graph_from_classes(classes(), dynamic=True, dynamic_sites={
