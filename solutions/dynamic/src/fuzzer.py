@@ -27,6 +27,8 @@ def fuzz_values(rand: random.Random, methodid: jvm.AbsMethodID, trial: int, stri
     values = []
     strings: dict[int, str] = {}
     string_position = 0
+    int_position = 0     # rank among int params: the index must not depend on the absolute position,
+    bool_position = 0    # otherwise params in high positions get the same value for every small trial
     if not string_pool:
         string_pool = ['', '__CANARY__']
     for (position, param) in enumerate(methodid.extension.params):
@@ -39,13 +41,15 @@ def fuzz_values(rand: random.Random, methodid: jvm.AbsMethodID, trial: int, stri
                 string_position += 1 # ensures all string combinations for multiple string parameters
             case jvm.Int():
                 if trial < SYSTEMATIC_TRIALS:
-                    index = trial // len(INTERESTING_INTS) ** position % len(INTERESTING_INTS)
+                    index = trial // len(INTERESTING_INTS) ** int_position % len(INTERESTING_INTS)
                     value = INTERESTING_INTS[index]
                 else:
                     value = rand.randint(-(1 << 31), (1 << 31) - 1)
                 values.append(jpamb.case.Int(value))
+                int_position += 1
             case jvm.Boolean():
-                values.append(jpamb.case.Boolean(bool(trial // 2 ** position % 2)))
+                values.append(jpamb.case.Boolean(bool(trial // 2 ** bool_position % 2)))
+                bool_position += 1
             case jvm.Array(contains=jvm.Int()):
                 if trial < SYSTEMATIC_TRIALS:
                     array = INTERESTING_INT_ARRAYS[trial % len(INTERESTING_INT_ARRAYS)]

@@ -391,11 +391,10 @@ def _analyse(bytecode, bootstrap=None):
 
     return discovered
 
-
 def _entry_to_json(entry):
     if entry[0] == "comparison":
         _, method, string, side = entry
-        result = {"method": method, "string": string}
+        result = {"method": method, "string": string, "strings": [string]}
         if side:
             result["side"] = side
         return result
@@ -405,7 +404,6 @@ def _entry_to_json(entry):
         "strings": [p for p in parts if p is not None],
         "parts": list(parts),
     }
-
 
 def extract_entries(bytecode, bootstrap=None):
     """Comparisons (with their kind) and concatenations found in a method."""

@@ -23,7 +23,8 @@ public class Runtime {
           // Calls.class,
           // jpamb.cases.advanced.CWE470.class,
           // jpamb.cases.advanced.CWE502.class,
-          jpamb.cases.advanced.Extended470.class
+          jpamb.cases.advanced.CWE470_Naive.class,
+          jpamb.cases.advanced.CWE502_Naive.class
           );
 
   public static Case[] cases(Method m) {

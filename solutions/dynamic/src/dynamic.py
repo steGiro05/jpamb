@@ -68,7 +68,6 @@ def request_call_graph(entry_method: jvm.AbsMethodID, *, config_path: Path | Non
         data = json.loads(completed.stdout)
     except json.JSONDecodeError:
         return {}
-    _debug_log(f"Call graph request succeeded for {entry_method}")
     return dict(data) if isinstance(data, Mapping) else {}
 
 def obtain_call_graph(entry_method: jvm.AbsMethodID) -> dict:
@@ -107,7 +106,6 @@ def request_dictionary(entry_method: jvm.AbsMethodID) -> list[dict]:
         data = json.loads(completed.stdout)
     except json.JSONDecodeError:
         return []
-    _debug_log(f"Dictionary request succeeded for {entry_method}: {data}")
     return data if isinstance(data, list) else []
 
 def obtain_dictionary(entry_method: jvm.AbsMethodID) -> list[dict]:
@@ -257,7 +255,6 @@ class NodeSearch:
     # ------------------------------------------------------------------ target
 
     def _retarget(self, node: str, distance: float, seed: Seed | None) -> None:
-        _debug_log(f"New target: {node} (distance {distance})")
         self.target = node
         self.target_distance = distance
         self.corpus = [seed] if seed else [] # register the seed that reached the new target, if any
@@ -290,6 +287,8 @@ class NodeSearch:
         for node in sorted(nodes):   # sorted: sets of str iterate in a different order on every run
             if len(self.sources) >= MAX_DICT_SOURCES:
                 break
+            if '@' in node:   # instruction ids ("method@offset") are coverage points, not methods
+                continue
             if node not in self.sources and self._dictionary(node):
                 self.sources.append(node)
                 added = True
@@ -302,7 +301,12 @@ class NodeSearch:
         unique: dict[tuple[str, str], tuple[str, list]] = {}
         for source in dict.fromkeys([node] + self.sources):
             for entry in self._dictionary(source):
-                operation, strings = entry.get('method'), entry.get('strings', [])
+                operation = entry.get('method')
+                
+                strings = entry.get('strings', [])
+                if not strings and 'string' in entry:
+                    strings = [entry['string']]
+                    
                 if operation and strings:
                     unique.setdefault((operation, repr(strings)), (operation, strings))
         return list(unique.values())
@@ -435,6 +439,63 @@ class NodeSearch:
             if grew:
                 self._refresh_pools()              # keeps corpus, tried and budget
 
+# ------------------------------------------------------------------------ debug
+# JPAMB_FUZZ_DEBUG=1                     writes a trace of the search to debug.log
+# JPAMB_FUZZ_PROBE=__CANARY__,admin      also reports which pools contain these strings
+FUZZ_DEBUG = True
+PROBES = [p for p in os.environ.get('JPAMB_FUZZ_PROBE', '').split(',') if p]
+
+def _short(node: str) -> str:
+    return node.split(':(')[0].rsplit('.', 1)[-1]
+
+def _fmt(value) -> str:
+    """jpamb.case values as plain python values (String/Int/Boolean -> value, Array -> values)."""
+    inner = getattr(value, 'value', None)
+    if inner is None:
+        inner = getattr(value, 'values', value)
+    return repr(inner)
+
+def _probe_report(search: 'NodeSearch') -> str:
+    rows = []
+    for probe in PROBES:
+        where = sorted(p for (p, pool) in search.pools.items() if probe in pool)
+        rows.append(f"{probe!r} in pools of params {where or 'NONE'}")
+    return '; '.join(rows)
+
+def _trace_setup(methodid, start, distances, hints, role_payloads, search: 'NodeSearch') -> None:
+    _debug_log('=== FUZZ DEBUG: setup ===')
+    _debug_log(f'params           : {[str(t) for t in search.param_types]}')
+    _debug_log(f'distance(start)  : {distances.get(start, math.inf)}')
+    _debug_log(f'taint roles      : {hints.roles}')
+    _debug_log(f'tainted / pooled / plain : {sorted(search.tainted)} / {sorted(search.pooled)} / {sorted(search.plain)}')
+    for (role, payloads) in role_payloads.items():
+        _debug_log(f'payloads[{role}] ({len(payloads)}): {payloads[:8]}')
+    for (param, pool) in search.pools.items():
+        _debug_log(f'pool p{param} ({len(pool)}): {pool[:40]}')
+    if PROBES:
+        _debug_log(f'probes           : {_probe_report(search)}')
+
+def _trace_run(n: int, phase: str, start: str, values: list, outcome, visited: set[str],
+               search: 'NodeSearch') -> None:
+    entry_offsets = [int(v.rsplit('@', 1)[1]) for v in visited if v.startswith(start + '@')]
+    n_instr = sum('@' in v for v in visited)
+    new = len(visited - search.covered)
+    _debug_log(f'run {n:3d} {phase:8s} out={outcome!s:16} entry_depth={max(entry_offsets, default=-1):3d} '
+               f'methods={len(visited) - n_instr:2d} instr={n_instr:3d} new={new:3d} '
+               f'corpus={len(search.corpus)} left={search.left} target={_short(search.target)}')
+    _debug_log(f'        in=({", ".join(_fmt(v) for v in values)})')
+
+def _trace_end(runs: int, trial: int, behaviors: set, search: 'NodeSearch') -> None:
+    methods = sorted(v for v in search.covered if '@' not in v)
+    _debug_log('=== FUZZ DEBUG: end ===')
+    _debug_log(f'runs={runs} fallback_trials={trial} behaviors={sorted(map(str, behaviors))}')
+    _debug_log(f'dictionary sources: {[_short(s) for s in search.sources]}')
+    _debug_log(f'covered methods   : {[_short(m) for m in methods]}')
+    for (param, pool) in search.pools.items():
+        _debug_log(f'final pool p{param} ({len(pool)}): {pool[:40]}')
+    if PROBES:
+        _debug_log(f'probes           : {_probe_report(search)}')
+
 def analyse() -> int:
     methodid = jpamb.getmethodid('dynamic', '0.1.0', 'DTU Project Group 8', ['dynamic', 'python', 'fuzzing', 'random', 'dictionary', 'syntactic', 'taint'], for_science=True)
     (suite, eff) = jpamb.setup()
@@ -447,25 +508,28 @@ def analyse() -> int:
     raw_hints = obtain_taint_hints(bc, methodid, call_graph_data)
     hints = parse_hints(raw_hints)
     role_payloads = payloads_by_role(call_graph_data, distances)
-    _debug_log(f'Tainted roles: {hints.roles}')
-    _debug_log(f'Payloads per role: {role_payloads}')
 
     rand = random.Random(0)
     MAX_STEPS = 200
     MAX_TESTS = 100
     MAX_TOTAL_RUNS = 500
     search = NodeSearch(rand, methodid, start, distances, hints, role_payloads)
+    if FUZZ_DEBUG:
+        _trace_setup(methodid, start, distances, hints, role_payloads, search)
     has_params = len(methodid.extension.params) > 0
     n_trials = MAX_TESTS if has_params else 1
     behaviors = set()
     runs = 0
 
+    last_outcome = None
+
     def execute(values) -> set[str]:
-        nonlocal runs
+        nonlocal runs, last_outcome
         if runs >= MAX_TOTAL_RUNS:
             raise OutOfBudget
         runs += 1
         (outcome, visited_methods) = run(bc, methodid, jpamb.case.Input(values), MAX_STEPS)
+        last_outcome = outcome   # None = MAX_STEPS exhausted (or no termination)
         if outcome is not None:
             behaviors.add(outcome)
         elif not has_params:
@@ -474,15 +538,22 @@ def analyse() -> int:
     trial = 0
     try:
         while trial < n_trials:
+            phase = 'guided'
             candidate = search.next_candidate()
             if candidate is None:
+                phase = 'fallback'
                 (values, strings) = search.fallback_candidate(trial)
                 trial += 1
             else:
                 (values, strings) = candidate
-            search.observe(values, strings, execute(values))
+            visited = execute(values)
+            if FUZZ_DEBUG:
+                _trace_run(runs, phase, start, values, last_outcome, visited, search)
+            search.observe(values, strings, visited)
     except OutOfBudget:
         pass
+    if FUZZ_DEBUG:
+        _trace_end(runs, trial, behaviors, search)
     for query in jpamb.QUERIES:
         print(f"{query};{('found' if query in behaviors else 'not-found')}")
         

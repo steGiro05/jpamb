@@ -16,6 +16,7 @@ dependencies = [
 [project.scripts]
 dynamic-interpreter = "dynamic:interpret"
 dynamic-analysis = "dynamic:analyse"
+stepwise-analysis = "stepwise_dynamic:analyse"
 
 [tool.uv.sources]
 jpamb = { path = "../../", editable = true }

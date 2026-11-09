@@ -660,7 +660,9 @@ def interpret():
 
 
 def run(bc, methodid, test_input, max_steps: int) -> tuple[str | None, set[str]]:
-    """Execute one input. Returns the outcome and a set of visited method IDs."""
+    """Execute one input. Returns the outcome and the set of visited ids: method IDs
+    ("pkg.Cls.m:(I)V") and instruction IDs ("pkg.Cls.m:(I)V@3"), so that passing a check
+    inside a method is visible as new coverage."""
     state = initial(bc, methodid, test_input)
     
     visited_methods = {str(methodid)}
@@ -669,6 +671,7 @@ def run(bc, methodid, test_input, max_steps: int) -> tuple[str | None, set[str]]
         pc, state = step(bc, state)
         
         visited_methods.add(str(pc.method))
+        visited_methods.add(f"{pc.method}@{pc.offset}")   # instruction-level coverage
 
         if isinstance(state, str):
             return state, visited_methods

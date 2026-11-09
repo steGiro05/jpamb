@@ -33,3 +33,5 @@ tags
 
 .DS_Store
 debug.log
+
+/target/*
