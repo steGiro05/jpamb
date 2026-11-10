@@ -128,6 +128,16 @@ def string_char_at(string: str, index: int) -> int:
         raise IndexError(index)
     return ord(string[index])
 
+def string_substring(s: str, begin: int, end: int = None) -> str:
+    if end is None:
+        if begin < 0 or begin > len(s):
+            raise ValueError(f"String index out of range: {begin}")
+        return s[begin:]
+    
+    if begin < 0 or end > len(s) or begin > end:
+        raise ValueError(f"String index out of range: begin {begin}, end {end}")
+    
+    return s[begin:end]
 
 # The String methods we can execute, with the Python code that computes them
 STRING_METHODS = {
@@ -140,6 +150,7 @@ STRING_METHODS = {
     "length": lambda s: len(s),
     "charAt": string_char_at,
     "split": string_split,
+    "substring": string_substring,
 }
 
 # Methods that accept a null argument instead of throwing NullPointerException
