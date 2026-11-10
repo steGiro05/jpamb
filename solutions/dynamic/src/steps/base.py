@@ -29,5 +29,5 @@ class Fuzzer:
         self.bc = bc
         self.suite = suite
 
-    def generate_values(self, trial: int) -> list:
+    def generate_values(self, trial: int, visited: set) -> list:
         raise NotImplementedError("Subclasses must implement this method")

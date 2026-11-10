@@ -8,9 +8,7 @@ from interpreter import run
 from steps.base import Fuzzer, _debug_log
 from steps.naive import NaiveFuzzer
 from steps.dictionary import DictFuzzer
-class GraphFuzzer(Fuzzer):
-    def generate_values(self, trial: int) -> list:
-        return []
+from steps.graph import GraphFuzzer
 
 class TaintFuzzer(Fuzzer):
     def generate_values(self, trial: int) -> list:
@@ -28,7 +26,7 @@ def analyse() -> int:
     # rand = random.Random(0)
     rand = random.Random()
     MAX_STEPS = 200
-    MAX_TESTS = 1000
+    MAX_TESTS = 50000
 
     n_trials = MAX_TESTS
     behaviors = set()
@@ -41,25 +39,32 @@ def analyse() -> int:
         "taint": TaintFuzzer
     }
     
-    mode = os.environ.get("FUZZER_MODE", "dictionary").lower()
+    mode = os.environ.get("FUZZER_MODE", "naive").lower()
     fuzzer_class = fuzzer_map.get(mode, NaiveFuzzer)
     fuzzer = fuzzer_class(rand, methodid, bc, suite, MAX_TESTS)
 
-    def execute(values) -> None:
+    def execute(values) -> set[str]:
         nonlocal last_outcome
         
         test_input = jpamb.case.Input(values)
-        outcome, _ = run(bc, methodid, test_input, MAX_STEPS)
+        outcome, visited = run(bc, methodid, test_input, MAX_STEPS)
         
         last_outcome = outcome 
         if outcome is not None:
             behaviors.add(outcome)
 
+        return visited
+
     trial = 0
+    visited = set()
     while trial < n_trials:
-        values = fuzzer.generate_values(trial)
-        execute(values)
-        _debug_log(f"trial n. f{trial}, generated values: [f{values}]")
+        values = fuzzer.generate_values(trial, visited)
+        new = execute(values) - visited
+        if new:
+            _debug_log(f"trial {trial}: {values} -> +{len(new)} coverage, outcome={last_outcome}")
+        visited.update(new)
+        if last_outcome == "assertion error":
+            break
         trial += 1
         
     for query in jpamb.QUERIES:

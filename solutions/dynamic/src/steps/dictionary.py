@@ -31,7 +31,6 @@ class DictFuzzer(Fuzzer):
     
     SEPARATORS = ["", ":"]
 
-    # Composizione di token: max token usati e max lunghezza della sequenza
     MAX_COMPOSE_TOKENS = 12
     MAX_COMPOSE_LEN = 3
 
@@ -136,12 +135,13 @@ class DictFuzzer(Fuzzer):
             return []
         return data
 
-    def _generate_serialized_classes(self, int_dict: list) -> list:
+    def _generate_serialized_classes(self, int_dict: list, string_dict: list) -> list:
+        from itertools import product
         serialized_payloads = []
         header = "SER"
         
         all_ints = list(dict.fromkeys(self.INTERESTING_INTS + int_dict))
-        all_strings = list(dict.fromkeys(self.INTERESTING_STRINGS))
+        all_strings = list(dict.fromkeys(self.INTERESTING_STRINGS + string_dict))
         
         for c in self.class_names:
             classname = c.shortname
@@ -149,15 +149,18 @@ class DictFuzzer(Fuzzer):
             if not c.params:
                 serialized_payloads.append(f"{header}|{classname}|")
             else:
-                first_param_type = c.params[0][1]
-                if first_param_type in ("int", "Integer"):
-                    for val in all_ints:
-                        serialized_payloads.append(f"{header}|{classname}|{val}")
-                elif "String" in first_param_type:
-                    for val in all_strings:
-                        serialized_payloads.append(f"{header}|{classname}|{val}")
-                else:
-                    serialized_payloads.append(f"{header}|{classname}|")
+                param_pools = []
+                for _, p_type in c.params:
+                    if p_type in ("int", "Integer"):
+                        param_pools.append(all_ints)
+                    elif "String" in p_type:
+                        param_pools.append(all_strings)
+                    else:
+                        param_pools.append([""])
+                
+                for combo in product(*param_pools):
+                    str_vals = "|".join(str(x) for x in combo)
+                    serialized_payloads.append(f"{header}|{classname}|{str_vals}")
                     
         return list(dict.fromkeys(serialized_payloads))
 
@@ -166,41 +169,31 @@ class DictFuzzer(Fuzzer):
             s for e in dict_entries
             for s in e.get("strings", [])
             if isinstance(s, str) and s != ""
-        ))
+        )) # extract all and only string values from the dictionary
         extra_tokens = [c for c in dict.fromkeys(class_pool)
-                        if c not in dict_tokens and c != ""]
+                        if c not in dict_tokens and c != ""] #e either class pool or serialized objects
 
         room = max(0, self.MAX_COMPOSE_TOKENS - len(dict_tokens))
         if len(extra_tokens) > room:
             extra_tokens = self.rand.sample(extra_tokens, room)
-        tokens = dict_tokens[: self.MAX_COMPOSE_TOKENS] + extra_tokens
+        tokens = dict_tokens[: self.MAX_COMPOSE_TOKENS] + extra_tokens # bounds tokens to combine to MAX_COMPOSE_TOKENS
 
         composed = set()
-        for k in range(1, self.MAX_COMPOSE_LEN + 1):
+        for k in range(1, self.MAX_COMPOSE_LEN + 1): # concatenation token length
             if k > len(tokens):
                 break
             for perm in permutations(tokens, k):
                 for sep in self.SEPARATORS:
-                    composed.add(sep.join(perm))
+                    composed.add(sep.join(perm)) # join permutation with separator
         return list(composed)
 
-    def generate_values(self, trial: int) -> list:
+    def generate_values(self, trial: int, visited: set) -> list:
         if self.cached_string_values is None:
             srcfile = self._build_file_path()
             if not self.class_names:
                 self._load_classnames_from_file(srcfile)
             if not self.vuln_type:
                 self._load_vuln_type(srcfile)
-
-            int_dict = self._collect_dictionary()
-            self.cached_int_values = list(dict.fromkeys(self.INTERESTING_INTS + int_dict))
-            
-            if self.vuln_type == VulnFamily.CWE470:
-                class_pool = [c.shortname for c in self.class_names]
-            elif self.vuln_type == VulnFamily.CWE502:
-                class_pool = self._generate_serialized_classes(int_dict)
-            else:
-                class_pool = []
 
             raw_dict = self._obtain_dictionary(self.methodid) 
             dict_entries = []
@@ -209,6 +202,22 @@ class DictFuzzer(Fuzzer):
             elif isinstance(raw_dict, dict):
                 target_key = self.methodid.encode()
                 dict_entries = raw_dict.get(target_key, [])
+
+            string_dict = list(dict.fromkeys(
+                s for e in dict_entries
+                for s in e.get("strings", [])
+                if isinstance(s, str) and s != ""
+            ))
+
+            int_dict = self._collect_dictionary()
+            self.cached_int_values = list(dict.fromkeys(self.INTERESTING_INTS + int_dict))
+            
+            if self.vuln_type == VulnFamily.CWE470:
+                class_pool = [c.shortname for c in self.class_names]
+            elif self.vuln_type == VulnFamily.CWE502:
+                class_pool = self._generate_serialized_classes(int_dict, string_dict)
+            else:
+                class_pool = []
 
             composed = self._build_composed_pool(dict_entries, class_pool)
             composed_set = set(composed)

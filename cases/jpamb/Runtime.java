@@ -14,9 +14,12 @@ import jpamb.utils.CaseContent.ResultType;
 public class Runtime {
   static List<Class<?>> caseclasses =
       List.of(
-          jpamb.cases.advanced.CWE470_Naive.class,
+          // jpamb.cases.advanced.CWE470_Naive.class,
           // jpamb.cases.advanced.CWE502_Naive.class,
-          jpamb.cases.advanced.CWE470_Dict.class
+          // jpamb.cases.advanced.CWE470_Dict.class,
+          // jpamb.cases.advanced.CWE502_Dict.class,
+          jpamb.cases.advanced.CWE470_Graph.class,
+          jpamb.cases.advanced.CWE502_Graph.class
           );
 
   public static Case[] cases(Method m) {

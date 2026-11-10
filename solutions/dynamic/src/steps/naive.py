@@ -132,7 +132,7 @@ class NaiveFuzzer(Fuzzer):
                     
         return list(dict.fromkeys(serialized_payloads))
 
-    def generate_values(self, trial: int) -> list:
+    def generate_values(self, trial: int, visited: set) -> list:
         if not self.class_names:
             self._load_classnames_from_file(self._build_file_path())
 
