@@ -30,6 +30,7 @@ def analyse() -> int:
 
     n_trials = MAX_TESTS
     behaviors = set()
+    witnesses = {}
     last_outcome = None
 
     fuzzer_map = {
@@ -52,6 +53,7 @@ def analyse() -> int:
         last_outcome = outcome 
         if outcome is not None:
             behaviors.add(outcome)
+            witnesses.setdefault(outcome, jpamb.Case(jpamb.Experiment(methodid, test_input), outcome))
 
         return visited
 
@@ -69,7 +71,11 @@ def analyse() -> int:
         
     for query in jpamb.QUERIES:
         print(f"{query};{('found' if query in behaviors else 'not-found')}")
-        
+
+    if path := os.environ.get("JPAMB_WITNESS_PATH"):
+        with open(path, "a") as f:
+            f.writelines(f"{case.encode()}\n" for case in witnesses.values())
+
     return 0
 
 if __name__ == "__main__":
