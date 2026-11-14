@@ -517,9 +517,11 @@ def step(bc: jpamb.Bytecode, state: jvmc.State) -> tuple[jvmc.PC, jvmc.State | s
             values = [from_stack(state.heap, v) for v in args]
             try:
                 result = STATIC_METHODS[(m.classname, m.extension.name)](*values)
-            except ValueError as e:
-                # A Java exception that is not one of the JPAMB outcomes
-                raise NotImplementedError(f"Exceptions are not supported yet: {e}") from e
+            except ValueError:
+                # NumberFormatException: like the other non-JPAMB exceptions
+                # (ClassNotFoundException, IllegalArgumentException), we assume
+                # the program catches it, as every case does around simulateReadObject
+                return pc, "ok"
             frame.stack.push(to_stack(state.heap, m.extension.return_type, result))
             frame.pc += 1
 

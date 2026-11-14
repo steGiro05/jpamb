@@ -112,15 +112,21 @@ class GraphFuzzer(Fuzzer):
 
     # ---------- corpus / mutation ----------
     def _mutate_slot(self, value: str) -> str:
-        """Replace one argument slot of a SER|Class|arg|... payload, keeping the rest."""
+        """Replace one slot of a SER|Class|arg|... payload (class or argument), keeping the rest."""
         parts = value.split("|")
-        tokens = [s for s in self.pools["str"] if "|" not in s] + [str(i) for i in self.pools["int"]]
-        parts[self.rand.randrange(2, len(parts))] = self.rand.choice(tokens)
+        i = self.rand.randrange(1, len(parts))
+        if i == 1:  # swap the class, e.g. when an allowlist rejects the current one
+            tokens = [s.split("|")[1] for s in self.pools["str"] if s.startswith("SER|")]
+        else:
+            tokens = [s for s in self.pools["str"] if "|" not in s] + [str(i) for i in self.pools["int"]]
+        parts[i] = self.rand.choice(tokens)
         return "|".join(parts)
 
     def _mutate(self, values: list, params: list) -> list:
         values = list(values)
-        for i in self.rand.sample(range(len(params)), min(2, len(params))):
+        # Mutate 1 or 2 parameters: touching only one keeps the guards already passed
+        k = self.rand.randint(1, min(2, len(params)))
+        for i in self.rand.sample(range(len(params)), k):
             pool = self._pool(params[i])
             v = values[i]
             if isinstance(v, str) and v.startswith("SER|") and v.count("|") >= 2 \

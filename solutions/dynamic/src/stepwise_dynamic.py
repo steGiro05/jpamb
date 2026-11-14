@@ -27,6 +27,8 @@ def analyse() -> int:
     rand = random.Random()
     MAX_STEPS = 200
     MAX_TESTS = 50000
+    # After the first assertion error, keep fuzzing for some trials
+    EXTRA_TRIALS = 200
 
     n_trials = MAX_TESTS
     behaviors = set()
@@ -59,14 +61,15 @@ def analyse() -> int:
 
     trial = 0
     visited = set()
-    while trial < n_trials:
+    stop_at = n_trials
+    while trial < stop_at:
         values = fuzzer.generate_values(trial, visited)
         new = execute(values) - visited
         if new:
             _debug_log(f"trial {trial}: {values} -> +{len(new)} coverage, outcome={last_outcome}")
         visited.update(new)
-        if last_outcome == "assertion error":
-            break
+        if "assertion error" in behaviors:
+            stop_at = min(stop_at, trial + 1 + EXTRA_TRIALS)
         trial += 1
         
     for query in jpamb.QUERIES:
