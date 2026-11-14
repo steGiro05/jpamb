@@ -19,7 +19,8 @@ public class Runtime {
           jpamb.cases.advanced.CWE470_Dict.class,
           jpamb.cases.advanced.CWE502_Dict.class,
           jpamb.cases.advanced.CWE470_Graph.class,
-          jpamb.cases.advanced.CWE502_Graph.class
+          jpamb.cases.advanced.CWE502_Graph.class,
+          jpamb.cases.advanced.taint_cases.class
           );
 
   public static Case[] cases(Method m) {

@@ -16,8 +16,7 @@ dependencies = [
 
 
 [project.scripts]
-dynamic-interpreter = "dynamic:interpret"
-dynamic-analysis = "dynamic:analyse"
+dynamic-interpreter = "interpreter:interpret"
 stepwise-analysis = "stepwise_dynamic:analyse"
 
 [tool.uv.sources]
@@ -32,4 +31,4 @@ dev = [
 package-dir = {"" = "src"}
 packages = ["steps"]
 
-py-modules = ["dynamic", "stepwise_dynamic"]
+py-modules = ["interpreter", "stepwise_dynamic", "synthesis"]

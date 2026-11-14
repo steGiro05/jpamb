@@ -59,6 +59,11 @@ def analyse() -> int:
     trial = 0
     visited = set()
     stop_at = n_trials
+    # The taint analysis proved no input reaches a sink: answer ok without fuzzing
+    if getattr(fuzzer, "is_unflagged", None) and fuzzer.is_unflagged():
+        _debug_log("skipping fuzzing: taint classification=unflagged")
+        behaviors.add("ok")
+        stop_at = 0
     while trial < stop_at:
         values = fuzzer.generate_values(trial, visited)
         new = execute(values) - visited

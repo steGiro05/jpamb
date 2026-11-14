@@ -65,6 +65,18 @@ CLASS_NEW_INSTANCE = _method(
     "java.lang.Class.newInstance:()Ljava/lang/Object;"
 )
 
+# Allowlist sanitizers of cases/jpamb/cases/advanced/taint_cases.java. Comment
+# these lines out of DEFAULT_SUMMARIES to see deser_sanitized/reflect_sanitized
+# reported as tainted again.
+TAINT_CASES_SANITIZE_PAYLOAD = _method(
+    "jpamb.cases.advanced.taint_cases.sanitizePayload:"
+    "(Ljava/lang/String;)Ljava/lang/String;"
+)
+TAINT_CASES_SANITIZE_COMMAND = _method(
+    "jpamb.cases.advanced.taint_cases.sanitizeCommand:"
+    "(Ljava/lang/String;)Ljava/lang/String;"
+)
+
 
 DEFAULT_SUMMARIES: dict[jvm.AbsMethodID, MethodSummary] = {
     SIMULATE_RESOLVE_CLASS: MethodSummary(
@@ -77,6 +89,8 @@ DEFAULT_SUMMARIES: dict[jvm.AbsMethodID, MethodSummary] = {
     CLASS_NEW_INSTANCE: MethodSummary(
         CLASS_NEW_INSTANCE, receiver_dependency=True
     ),
+    # TAINT_CASES_SANITIZE_PAYLOAD: MethodSummary(TAINT_CASES_SANITIZE_PAYLOAD, sanitizer=True),
+    # TAINT_CASES_SANITIZE_COMMAND: MethodSummary(TAINT_CASES_SANITIZE_COMMAND, sanitizer=True),
 }
 
 

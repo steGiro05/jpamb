@@ -81,7 +81,8 @@ class GraphFuzzer(Fuzzer):
             if isinstance(o, jvm.Push) and isinstance(o.type, jvm.Int)]))
         base = list(dict.fromkeys(self.STRINGS + self._dictionary_strings(self.methodid.encode())))
 
-        if srcfile.name.upper().startswith("CWE502"):  # serialized objects: SER|Class|args
+        # if srcfile.name.upper().startswith("CWE502"):  # serialized objects: SER|Class|args
+        if True:
             def arg(t):
                 return str(self.rand.choice(ints)) if t in ("int", "Integer") else \
                     self.rand.choice(base) if "String" in t else ""

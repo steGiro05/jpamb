@@ -11,13 +11,18 @@ from pathlib import Path
 from steps.base import Fuzzer, ClassInfo, _debug_log
 
 
-class GraphFuzzer(Fuzzer):
+class TaintFuzzer(Fuzzer):
     INTS = [0] + [x for i in range(1, 11) for x in (i, -i)] + [2147483647, -2147483648]
     STRINGS = [""]
     INT_ARRAYS = [[], [0], [1], [-1], [0, 0], [1, 2, 3], [-1, 0, 1], [42], [100]]
     CHAR_ARRAYS = ["", "a", "x", "hello", "Hello", "test"]
     SEPARATORS = ["", ":"]
     INITIAL_CORPUS = 20
+    # Chance that a String draws from the vulnerability values (class names,
+    # serialized objects) instead of the dictionary
+    VULN_P_UNSAFE = 0.8   # parameters the taint analysis tagged as unsafe
+    VULN_P_SAFE = 0.1     # every other parameter
+    VULN_P_UNKNOWN = 0.5  # no taint findings: no parameter is preferred
 
     def __init__(self, rand, methodid, bc, suite, max_tests):
         super().__init__(rand, methodid, bc, suite)
@@ -27,6 +32,9 @@ class GraphFuzzer(Fuzzer):
         self.pools = {}       # per-type value pools
         self.last = None      # last returned input (raw python values)
         self.seen = 0         # coverage size at last trial
+        self.categories = set()  # vulnerabilities reported by the taint analysis
+        self.unsafe = set()      # indices of the parameters that reach a sink
+        self.report = None       # taint report, requested once
         self.known_methods = {
             "jpamb.cases.advanced.CWE502_Dict.simulateResolveClassName:(Ljava/lang/String;)Ljava/lang/String;", # remove stubs from methods to visit
             "jpamb.cases.advanced.CWE502_Dict.simulateReadObject:(Ljava/lang/String;)Ljava/lang/Object;",
@@ -73,6 +81,35 @@ class GraphFuzzer(Fuzzer):
             data = data.get(method_id, [])
         return [s for e in data for s in e.get("strings", []) if isinstance(s, str) and s]
 
+    def _taint_report(self, method_id: str) -> dict:
+        """Ask the taint analysis which vulnerability the method has and which inputs reach it."""
+        data = {}
+        path = os.environ.get("JPAMB_TAINT_REPORT_PATH")
+        try:
+            if path:
+                data = json.loads(Path(path).read_text(encoding="utf-8"))
+            else:
+                out = subprocess.run(["taint-analysis", method_id],
+                                     capture_output=True, text=True, check=True).stdout
+                data = json.loads(out)
+        except Exception as e:
+            _debug_log(f"Taint request failed for {method_id}: {e}")
+        if isinstance(data, dict) and "entry_method" not in data:  # file with many reports
+            data = data.get(method_id, {})
+        return data if isinstance(data, dict) else {}
+
+    def _report(self) -> dict:
+        """The taint report for the entry method, requested once."""
+        if self.report is None:
+            self.report = self._taint_report(self.methodid.encode())
+            _debug_log(f"taint: classification={self.report.get('classification', 'not analysed')}")
+        return self.report
+
+    def is_unflagged(self) -> bool:
+        """True when the taint analysis found no path from an input to a sink.
+        A missing report (analysis failed) is not unflagged: fuzzing still runs."""
+        return self._report().get("classification") == "unflagged"
+
     def _build_pools(self):
         srcfile = self.suite.sourcefile(self.methodid.classname).relative_to(Path.cwd())
         classes = self._classes(srcfile)
@@ -81,23 +118,40 @@ class GraphFuzzer(Fuzzer):
             if isinstance(o, jvm.Push) and isinstance(o.type, jvm.Int)]))
         base = list(dict.fromkeys(self.STRINGS + self._dictionary_strings(self.methodid.encode())))
 
-        if srcfile.name.upper().startswith("CWE502"):  # serialized objects: SER|Class|args
-            def arg(t):
-                return str(self.rand.choice(ints)) if t in ("int", "Integer") else \
-                    self.rand.choice(base) if "String" in t else ""
-            classpool = [f"SER|{c.shortname}|" + "|".join(arg(t) for _, t in c.params)
-                         for c in classes for _ in range(3)]
-        else:  # CWE470: plain class names
-            classpool = [c.shortname for c in classes]
+        findings = self._report().get("findings", [])
+        self.categories = {f.get("category") for f in findings}
+        self.unsafe = {i for f in findings for i in f.get("relevant_parameters", [])}
+        _debug_log(f"taint: categories={sorted(self.categories)} unsafe parameters={sorted(self.unsafe)}")
 
-        self.pools = {"int": ints, "str": list(dict.fromkeys(base + classpool)),
+        def arg(t):
+            return str(self.rand.choice(ints)) if t in ("int", "Integer") else \
+                self.rand.choice(base) if "String" in t else ""
+        classpool = []
+        # Without findings the vulnerability is unknown: offer both kinds of values
+        if "CWE-502" in self.categories or not self.categories:  # serialized objects: SER|Class|args
+            classpool += [f"SER|{c.shortname}|" + "|".join(arg(t) for _, t in c.params)
+                          for c in classes for _ in range(3)]
+        if "CWE-470" in self.categories or not self.categories:  # plain class names
+            classpool += [c.shortname for c in classes]
+
+        self.pools = {"int": ints, "str": base, "vuln": list(dict.fromkeys(classpool)),
                       "bool": [True, False], "ia": self.INT_ARRAYS, "ca": self.CHAR_ARRAYS}
 
-    def _pool(self, param) -> list:
+    def _vuln_p(self, index: int) -> float:
+        if not self.unsafe:
+            return self.VULN_P_UNKNOWN
+        return self.VULN_P_UNSAFE if index in self.unsafe else self.VULN_P_SAFE
+
+    def _pool(self, param, index: int) -> list:
+        """The values to draw from for parameter ``index``; Strings tagged unsafe by
+        the taint analysis favour the vulnerability values."""
         match param:
             case jvm.Int(): return self.pools["int"]
             case jvm.Boolean(): return self.pools["bool"]
-            case jvm.Object(name=n) if n == jvm.ClassName("java.lang.String"): return self.pools["str"]
+            case jvm.Object(name=n) if n == jvm.ClassName("java.lang.String"):
+                if self.pools["vuln"] and self.rand.random() < self._vuln_p(index):
+                    return self.pools["vuln"]
+                return self.pools["str"]
             case jvm.Array(contains=jvm.Int()): return self.pools["ia"]
             case jvm.Array(contains=jvm.Char()): return self.pools["ca"]
         raise NotImplementedError(f"Unsupported input type: {param!r}")
@@ -116,7 +170,8 @@ class GraphFuzzer(Fuzzer):
         parts = value.split("|")
         i = self.rand.randrange(1, len(parts))
         if i == 1:  # swap the class, e.g. when an allowlist rejects the current one
-            tokens = [s.split("|")[1] for s in self.pools["str"] if s.startswith("SER|")]
+            tokens = [s.split("|")[1] for s in self.pools["vuln"] if s.startswith("SER|")] \
+                or [s for s in self.pools["vuln"] if "|" not in s] or [parts[1]]
         else:
             tokens = [s for s in self.pools["str"] if "|" not in s] + [str(i) for i in self.pools["int"]]
         parts[i] = self.rand.choice(tokens)
@@ -127,23 +182,22 @@ class GraphFuzzer(Fuzzer):
         # Mutate 1 or 2 parameters: touching only one keeps the guards already passed
         k = self.rand.randint(1, min(2, len(params)))
         for i in self.rand.sample(range(len(params)), k):
-            pool = self._pool(params[i])
             v = values[i]
             if isinstance(v, str) and v.startswith("SER|") and v.count("|") >= 2 \
                     and self.rand.random() < 0.5:  # structural: mutate one slot in place
                 values[i] = self._mutate_slot(v)
             elif isinstance(params[i], jvm.Object):  # String: 1-3 tokens from scratch
-                parts = [self.rand.choice(pool) for _ in range(self.rand.randint(1, 3))]
+                parts = [self.rand.choice(self._pool(params[i], i)) for _ in range(self.rand.randint(1, 3))]
                 values[i] = self.rand.choice(self.SEPARATORS).join(parts)
             else:
-                values[i] = self.rand.choice(pool)
+                values[i] = self.rand.choice(self._pool(params[i], i))
         return values
 
     def generate_values(self, trial: int, visited: set) -> list:
         params = self.methodid.extension.params
         if not self.pools:
             self._build_pools()
-            self.seeds = [[self.rand.choice(self._pool(p)) for p in params]
+            self.seeds = [[self.rand.choice(self._pool(p, i)) for i, p in enumerate(params)]
                           for _ in range(self.INITIAL_CORPUS)]
             self.corpus = list(self.seeds)
 
