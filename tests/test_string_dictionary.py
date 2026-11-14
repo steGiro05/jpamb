@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from solutions.syntactic.src.string_dictionary import (
+from solutions.static.src.string_dictionary import (
     State,
     Value,
     UNKNOWN,
@@ -17,7 +17,7 @@ from solutions.syntactic.src.string_dictionary import (
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = ROOT / "solutions/syntactic/src/string_dictionary.py"
+SCRIPT = ROOT / "solutions/static/src/string_dictionary.py"
 CWE470 = "jpamb.cases.advanced.CWE470"
 CWE502 = "jpamb.cases.advanced.CWE502"
 STRING_ARG = ":(Ljava/lang/String;)V"
@@ -53,12 +53,12 @@ def method_id(class_name, method):
 @pytest.mark.parametrize(
     "method,expected",
     [
-        ("sayHello", {"method": "equals", "string": "hello"}),
-        ("sayHello2", {"method": "startsWith", "string": "good", "side": "argument"}),
-        ("sayHello2", {"method": "contains", "string": "morning", "side": "argument"}),
-        ("sayHello3", {"method": "endsWith", "string": "night", "side": "argument"}),
-        ("checkExtension", {"method": "endsWith", "string": ".pdf", "side": "argument"}),
-        ("checkComplexSequence", {"method": "contains", "string": "B", "side": "argument"}),
+        ("sayHello", {"method": "equals", "string": "hello", "strings": ["hello"]}),
+        ("sayHello2", {"method": "startsWith", "string": "good", "strings": ["good"], "side": "argument"}),
+        ("sayHello2", {"method": "contains", "string": "morning", "strings": ["morning"], "side": "argument"}),
+        ("sayHello3", {"method": "endsWith", "string": "night", "strings": ["night"], "side": "argument"}),
+        ("checkExtension", {"method": "endsWith", "string": ".pdf", "strings": [".pdf"], "side": "argument"}),
+        ("checkComplexSequence", {"method": "contains", "string": "B", "strings": ["B"], "side": "argument"}),
     ],
 )
 def test_string_comparisons(method, expected):
@@ -74,24 +74,24 @@ def test_unsafe_dispatcher_concatenation():
 
 def test_weak_dispatcher():
     result = run_dictionary(method_id(CWE470, "weak_dispatcher"))
-    assert {"method": "startsWith", "string": "Safe", "side": "argument"} in result
+    assert {"method": "startsWith", "string": "Safe", "strings": ["Safe"], "side": "argument"} in result
     assert REFLECTION_CONCAT in result
 
 
 def test_strict_safe_dispatcher():
     result = run_dictionary(method_id(CWE470, "strict_safe_dispatcher"))
-    assert {"method": "equals", "string": "Safe"} in result
+    assert {"method": "equals", "string": "Safe", "strings": ["Safe"]} in result
     assert REFLECTION_CONCAT in result
 
 
 @pytest.mark.parametrize(
     "method,expected",
     [
-        ("simulateResolveClassName", {"method": "equals", "string": "SER"}),
-        ("simulateReadObject", {"method": "equals", "string": "DummyButton"}),
-        ("blacklist_deserialization", {"method": "contains", "string": "__CANARY__Command", "side": "argument"}),
-        ("blacklist_deserialization", {"method": "contains", "string": "SafeWrapperCommand", "side": "argument"}),
-        ("whitelist_deserialization", {"method": "equals", "string": "DownGradableLibrary"}),
+        ("simulateResolveClassName", {"method": "equals", "string": "SER", "strings": ["SER"]}),
+        ("simulateReadObject", {"method": "equals", "string": "DummyButton", "strings": ["DummyButton"]}),
+        ("blacklist_deserialization", {"method": "contains", "string": "__CANARY__Command", "strings": ["__CANARY__Command"], "side": "argument"}),
+        ("blacklist_deserialization", {"method": "contains", "string": "SafeWrapperCommand", "strings": ["SafeWrapperCommand"], "side": "argument"}),
+        ("whitelist_deserialization", {"method": "equals", "string": "DownGradableLibrary", "strings": ["DownGradableLibrary"]}),
     ],
 )
 def test_deserialization_strings(method, expected):
@@ -107,14 +107,14 @@ def test_method_without_comparisons_or_concatenations():
 def test_class_dictionary():
     result = run_dictionary("--class", CWE470)
     assert REFLECTION_CONCAT in result["unsafe_dispatcher"]
-    assert {"method": "startsWith", "string": "Safe", "side": "argument"} in result["weak_dispatcher"]
-    assert {"method": "equals", "string": "Safe"} in result["strict_safe_dispatcher"]
+    assert {"method": "startsWith", "string": "Safe", "strings": ["Safe"], "side": "argument"} in result["weak_dispatcher"]
+    assert {"method": "equals", "string": "Safe", "strings": ["Safe"]} in result["strict_safe_dispatcher"]
 
 
 def test_class_dictionary_cwe502():
     result = run_dictionary("--class", CWE502)
-    assert {"method": "equals", "string": "SER"} in result["simulateResolveClassName"]
-    assert {"method": "equals", "string": "DownGradableLibrary"} in result["whitelist_deserialization"]
+    assert {"method": "equals", "string": "SER", "strings": ["SER"]} in result["simulateResolveClassName"]
+    assert {"method": "equals", "string": "DownGradableLibrary", "strings": ["DownGradableLibrary"]} in result["whitelist_deserialization"]
 
 
 def test_class_from_source_file():
@@ -130,10 +130,10 @@ def test_method_name_lookup():
 def test_full_method_ids_for_fuzzer():
     result = run_dictionary("--per-method")
     assert REFLECTION_CONCAT in result[method_id(CWE470, "unsafe_dispatcher")]
-    assert {"method": "equals", "string": "hello"} in result[
+    assert {"method": "equals", "string": "hello", "strings": ["hello"]} in result[
         method_id("jpamb.cases.Strings", "sayHello")
     ]
-    assert {"method": "equals", "string": "DownGradableLibrary"} in result[
+    assert {"method": "equals", "string": "DownGradableLibrary", "strings": ["DownGradableLibrary"]} in result[
         method_id(CWE502, "whitelist_deserialization")
     ]
 

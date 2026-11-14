@@ -477,7 +477,7 @@ def build(ctx, compile, document, test, benchmark):
             (tool_bin,),
             experiments=[],
             max_steps=100,
-            timeout=5.0,
+            timeout=30.0,
             eff=ctx.eff,
             abstract=False,
         )

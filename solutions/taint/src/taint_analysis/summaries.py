@@ -65,6 +65,18 @@ CLASS_NEW_INSTANCE = _method(
     "java.lang.Class.newInstance:()Ljava/lang/Object;"
 )
 
+# Allowlist sanitizers of cases/jpamb/cases/advanced/taint_cases.java. Comment
+# these lines out of DEFAULT_SUMMARIES to see deser_sanitized/reflect_sanitized
+# reported as tainted again.
+TAINT_CASES_SANITIZE_PAYLOAD = _method(
+    "jpamb.cases.advanced.taint_cases.sanitizePayload:"
+    "(Ljava/lang/String;)Ljava/lang/String;"
+)
+TAINT_CASES_SANITIZE_COMMAND = _method(
+    "jpamb.cases.advanced.taint_cases.sanitizeCommand:"
+    "(Ljava/lang/String;)Ljava/lang/String;"
+)
+
 
 DEFAULT_SUMMARIES: dict[jvm.AbsMethodID, MethodSummary] = {
     SIMULATE_RESOLVE_CLASS: MethodSummary(
@@ -77,6 +89,8 @@ DEFAULT_SUMMARIES: dict[jvm.AbsMethodID, MethodSummary] = {
     CLASS_NEW_INSTANCE: MethodSummary(
         CLASS_NEW_INSTANCE, receiver_dependency=True
     ),
+    # TAINT_CASES_SANITIZE_PAYLOAD: MethodSummary(TAINT_CASES_SANITIZE_PAYLOAD, sanitizer=True),
+    # TAINT_CASES_SANITIZE_COMMAND: MethodSummary(TAINT_CASES_SANITIZE_COMMAND, sanitizer=True),
 }
 
 
@@ -84,6 +98,39 @@ DEFAULT_SINKS: tuple[SinkSpec, ...] = (
     SinkSpec(CLASS_FOR_NAME, "CWE-470", sensitive_arguments=(0,)),
     SinkSpec(SIMULATE_READ_OBJECT, "CWE-502", sensitive_arguments=(0,)),
 )
+
+
+# Every benchmark class (CWE502, CWE502_Graph, CWE502_Dict, ...) declares its
+# own copy of the simulated deserialization helpers, sometimes with extra
+# parameters, so they are recognised by name rather than by exact method ID.
+# The call graph treats them as stubs and resolves none of their inner calls,
+# so the analysis must never step into their bodies.
+_SIMULATED_PACKAGE = "jpamb.cases."
+_SIMULATED_PROPAGATORS = frozenset({"simulateResolveClassName", "simulateReadObject"})
+_SIMULATED_SINKS = {"simulateReadObject": "CWE-502"}
+
+
+def _is_simulated(method: jvm.AbsMethodID, names) -> bool:
+    return method.methodid.name in names and method.classname.dotted().startswith(
+        _SIMULATED_PACKAGE
+    )
+
+
+def matching_sinks(
+    method: jvm.AbsMethodID, sinks: tuple[SinkSpec, ...] = DEFAULT_SINKS
+) -> tuple[SinkSpec, ...]:
+    """Configured sinks for ``method``, plus any simulated helper by name."""
+
+    matched = tuple(sink for sink in sinks if sink.method == method)
+    if matched or not _is_simulated(method, _SIMULATED_SINKS):
+        return matched
+    return (
+        SinkSpec(
+            method,
+            _SIMULATED_SINKS[method.methodid.name],
+            sensitive_arguments=(0,),
+        ),
+    )
 
 
 def sanitizer_summary(method: jvm.AbsMethodID) -> MethodSummary:
@@ -109,11 +156,13 @@ def builtin_summary(instruction: InvokeInstruction) -> MethodSummary | None:
 
     if summary := DEFAULT_SUMMARIES.get(instruction.method):
         return summary
+    if _is_simulated(instruction.method, _SIMULATED_PROPAGATORS):
+        return MethodSummary(instruction.method, argument_dependencies=(0,))
     if isinstance(instruction, jvm.InvokeDynamic):
         # JPAMB uses invokedynamic for string concatenation. Conservatively all
         # bootstrap arguments may affect the resulting string.
         return propagating_summary(instruction)
-    if instruction.method.classname == jvm.ClassName("java.lang.String"):
+    if instruction.method.classname.dotted().startswith("java."):
         return propagating_summary(instruction)
     return None
 
@@ -164,9 +213,7 @@ def inspect_sinks(
         raise ValueError("call-graph distance cannot be negative")
     operands = pop_invocation_operands(instruction, state)
     findings = []
-    for sink in sinks:
-        if instruction.method != sink.method:
-            continue
+    for sink in matching_sinks(instruction.method, sinks):
         labels = TaintSet.bottom()
         if sink.sensitive_receiver:
             if operands.receiver is None:

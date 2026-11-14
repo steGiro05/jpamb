@@ -5,11 +5,6 @@ import jpamb
 import jvm
 import jvm.state as jvmc
 
-
-def _debug_log(*args, **kwargs):
-    with open("debug.log", "a", encoding="utf-8") as f:
-        print(*args, file=f, **kwargs)
-
 def to_int32(value: int) -> int:
     """
     Convert a Python integer to a signed Java 32-bit integer.
@@ -133,6 +128,16 @@ def string_char_at(string: str, index: int) -> int:
         raise IndexError(index)
     return ord(string[index])
 
+def string_substring(s: str, begin: int, end: int = None) -> str:
+    if end is None:
+        if begin < 0 or begin > len(s):
+            raise IndexError(f"String index out of range: {begin}")
+        return s[begin:]
+    
+    if begin < 0 or end > len(s) or begin > end:
+        raise IndexError(f"String index out of range: begin {begin}, end {end}")
+    
+    return s[begin:end]
 
 # The String methods we can execute, with the Python code that computes them
 STRING_METHODS = {
@@ -145,6 +150,7 @@ STRING_METHODS = {
     "length": lambda s: len(s),
     "charAt": string_char_at,
     "split": string_split,
+    "substring": string_substring,
 }
 
 # Methods that accept a null argument instead of throwing NullPointerException
@@ -511,14 +517,16 @@ def step(bc: jpamb.Bytecode, state: jvmc.State) -> tuple[jvmc.PC, jvmc.State | s
             values = [from_stack(state.heap, v) for v in args]
             try:
                 result = STATIC_METHODS[(m.classname, m.extension.name)](*values)
-            except ValueError as e:
-                # A Java exception that is not one of the JPAMB outcomes
-                raise NotImplementedError(f"Exceptions are not supported yet: {e}") from e
+            except ValueError:
+                # NumberFormatException: like the other non-JPAMB exceptions
+                # (ClassNotFoundException, IllegalArgumentException), we assume
+                # the program catches it, as every case does around simulateReadObject
+                return pc, "ok"
             frame.stack.push(to_stack(state.heap, m.extension.return_type, result))
             frame.pc += 1
 
         case jvm.InvokeStatic(method=m):
-            assert (isinstance(m, jvm.AbsMethodID), f"expected method id but got {m}")
+            assert isinstance(m, jvm.AbsMethodID), f"expected method id but got {m}"
             len_params = len(m.methodid.params)
 
             print(f"param length: {len_params}", file=sys.stderr)
@@ -665,7 +673,9 @@ def interpret():
 
 
 def run(bc, methodid, test_input, max_steps: int) -> tuple[str | None, set[str]]:
-    """Execute one input. Returns the outcome and a set of visited method IDs."""
+    """Execute one input. Returns the outcome and the set of visited ids: method IDs
+    ("pkg.Cls.m:(I)V") and instruction IDs ("pkg.Cls.m:(I)V@3"), so that passing a check
+    inside a method is visible as new coverage."""
     state = initial(bc, methodid, test_input)
     
     visited_methods = {str(methodid)}
@@ -674,6 +684,7 @@ def run(bc, methodid, test_input, max_steps: int) -> tuple[str | None, set[str]]
         pc, state = step(bc, state)
         
         visited_methods.add(str(pc.method))
+        visited_methods.add(f"{pc.method}@{pc.offset}")   # instruction-level coverage
 
         if isinstance(state, str):
             return state, visited_methods

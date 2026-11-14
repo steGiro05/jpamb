@@ -54,7 +54,7 @@ def load_config(config_path: Path) -> tuple[list[str], dict[str, str], dict[tupl
     if not config_path.is_file():
         raise FileNotFoundError(f"Configuration file not found: {config_path}")
         
-    with config_path.open(encoding="utf-8") as f:
+    with config_path.open(encoding="utf-8-sig") as f:
         data = json.load(f)
         
     sinks = []
@@ -64,7 +64,7 @@ def load_config(config_path: Path) -> tuple[list[str], dict[str, str], dict[tupl
     config = data.get("analyzer_config", {})
     for vuln in config.get("vulnerabilities", []):
         if vuln.get("enabled", False):
-            sinks.extend(vuln.get("sinks", []))
+            sinks.extend(vuln.get("exploit_targets", vuln.get("sinks", [])))
             stubs.update(vuln.get("stubs", {}))
             
             for site in vuln.get("dynamic_sites", []):
@@ -231,11 +231,11 @@ def build_call_graph_from_classes(
                 continue
             code = method.get("code") or {}
 
-            for inst in code.get("bytecode", []):
+            for instruction_index, inst in enumerate(code.get("bytecode", [])):
                 kind = _dynamic_kind(inst, dynamic_sites) if dynamic else None
 
                 if kind:
-                    dynamic_calls.append((caller, kind))
+                    dynamic_calls.append((caller, kind, instruction_index))
                     continue
 
                 callee = _invoked_method_id(inst)
@@ -246,7 +246,7 @@ def build_call_graph_from_classes(
     if dynamic:
         constructors = find_constructors(graph)
 
-        for caller, kind in dynamic_calls:
+        for caller, kind, instruction_index in dynamic_calls:
             for constructor in constructors:
                 graph[caller].add(constructor)
 
@@ -254,7 +254,8 @@ def build_call_graph_from_classes(
                     edge = {
                         "caller": caller,
                         "callee": constructor,
-                        "kind": kind
+                        "kind": kind,
+                        "instruction_index": instruction_index,
                     }
 
                     if edge not in dynamic_edges:
@@ -336,15 +337,19 @@ def split_method_id(mid: str) -> tuple[str, str]:
     owner, _, name = mid.split(":(", 1)[0].rpartition(".")
     return owner, name
 
-def find_dynamic_sites(classes: Iterable[dict[str, Any]], dynamic_sites: dict[tuple[str, str], str]) -> dict[str, set[str]]:
-    sites: dict[str, set[str]] = defaultdict(set)
+def find_dynamic_sites(
+    classes: Iterable[dict[str, Any]],
+    dynamic_sites: dict[tuple[str, str], str],
+) -> dict[str, list[tuple[int, str]]]:
+    """Find real dynamic invokes, keeping each opcode-list position."""
+    sites: dict[str, list[tuple[int, str]]] = defaultdict(list)
     for cls in classes:
         for method in cls.get("methods", []):
             caller = _method_definition_id(cls["name"], method)
-            for inst in (method.get("code") or {}).get("bytecode", []):
+            for index, inst in enumerate((method.get("code") or {}).get("bytecode", [])):
                 kind = _dynamic_kind(inst, dynamic_sites)
                 if kind:
-                    sites[caller].add(kind)
+                    sites[caller].append((index, kind))
     return dict(sites)
 
 def find_stubs(graph: dict[str, list[str]], stubs: dict[str, str]) -> dict[str, str]:
@@ -378,10 +383,10 @@ def callers_closure(graph: dict[str, list[str]], sinks: Iterable[str]) -> set[st
 
 def add_dynamic_edges(
     graph: dict[str, list[str]],
-    sites: dict[str, set[str]],
+    sites: dict[str, list[tuple[int, str]]],
     stubs: dict[str, str],
     sinks: Iterable[str],
-) -> tuple[dict[str, list[str]], list[dict[str, str]]]:
+) -> tuple[dict[str, list[str]], list[dict[str, Any]]]:
     new_graph = {
         method: ([] if method in stubs else list(callees))
         for method, callees in graph.items()
@@ -389,25 +394,77 @@ def add_dynamic_edges(
     closure = callers_closure(new_graph, sinks)
     entries = sorted(m for m in closure if split_method_id(m)[1] in ENTRY_POINT_NAMES)
 
-    kinds: dict[str, set[str]] = defaultdict(set)
-    for method, site_kinds in sites.items():
-        kinds[method] |= site_kinds
-    for method, kind in stubs.items():
-        kinds[method].add(kind)
-
-    dynamic_edges: list[dict[str, str]] = []
-    for caller in sorted(kinds):
+    dynamic_edges: list[dict[str, Any]] = []
+    for caller in sorted(set(sites) | set(stubs)):
         if caller not in new_graph:
             continue
-        for kind in sorted(kinds[caller]):
+
+        if caller in stubs:
+            # The stub models a runtime operation; its hard-coded invokes
+            # aren't actual deserialization sites, so no index is attached.
+            events = [(None, stubs[caller])]
+        else:
+            events = sites.get(caller, [])
+
+        for instruction_index, kind in events:
             for callee in entries:
-                if callee != caller:
-                    dynamic_edges.append(
-                        {"caller": caller, "callee": callee, "kind": kind}
-                    )
+                if callee == caller:
+                    continue
+                edge = {"caller": caller, "callee": callee, "kind": kind}
+                if instruction_index is not None:
+                    edge["instruction_index"] = instruction_index
+                dynamic_edges.append(edge)
+
         linked = {e["callee"] for e in dynamic_edges if e["caller"] == caller}
         new_graph[caller] = sorted(set(new_graph[caller]) | linked)
     return new_graph, dynamic_edges
+
+
+def collect_call_sites(
+    classes: Iterable[dict[str, Any]],
+    graph: dict[str, list[str]],
+    *,
+    stubs: Iterable[str] = (),
+    legacy_dynamic: bool = False,
+) -> list[dict[str, Any]]:
+    """Record every invoke at its index in the JVM2JSON opcode list.
+
+    Directly invoked methods and synthetic dynamic constructor edges are
+    different: the latter stay in graph/dynamic_edges, not resolved_callees.
+    This is important because taint dispatch checks JVM call descriptors.
+    """
+    stub_methods = set(stubs)
+    records: list[dict[str, Any]] = []
+    for cls in classes:
+        for method in cls.get("methods", []):
+            caller = _method_definition_id(cls["name"], method)
+            if caller not in graph:
+                continue
+
+            bytecode = (method.get("code") or {}).get("bytecode", [])
+            for instruction_index, inst in enumerate(bytecode):
+                if inst.get("opr") != "invoke":
+                    continue
+                declared = _invoked_method_id(inst)
+                # Keep the position of mock invokes, but never report their
+                # fake constructor calls as genuine resolved call targets.
+                is_mock = caller in stub_methods or (
+                    legacy_dynamic and method["name"] == "simulateReadObject"
+                )
+                resolved = (
+                    [declared]
+                    if not is_mock and declared is not None
+                    and declared in graph[caller]
+                    else []
+                )
+                records.append({
+                    "caller": caller,
+                    "instruction_index": instruction_index,
+                    "declared_callee": declared,
+                    "resolved_callees": resolved,
+                })
+    return sorted(records, key=lambda s: (s["caller"], s["instruction_index"]))
+
 
 def class_name_from_file(path: Path) -> str:
     if path.suffix == ".java" and path.is_file():
@@ -551,7 +608,17 @@ def main(argv: list[str] | None = None) -> int:
                 edge for edge in dynamic_edges
                 if edge["caller"] in graph and edge["callee"] in graph
             ]
-            payload = {"graph": graph, "dynamic_edges": dynamic_edges, "sinks": sinks}
+            call_sites = collect_call_sites(
+                scope, graph,
+                stubs=find_stubs(graph, stubs),
+            )
+            payload = {
+                "graph": graph,
+                "call_sites": call_sites,
+                "dynamic_edges": dynamic_edges,
+                "exploit_targets": sinks,
+                "sinks": sinks,  # Temporary compatibility for existing fuzzer.
+            }
         else:
             # Keep the original CLI and its plain-JSON output intact.
             dynamic_edges = []
@@ -578,7 +645,17 @@ def main(argv: list[str] | None = None) -> int:
                 and method.split(".<init>:", 1)[0].replace("$", ".").split(".")[-1]
                 == "__CANARY__Command"
             ]
-            payload = {"graph": graph, "dynamic_edges": dynamic_edges, "sinks": sinks}
+            call_sites = collect_call_sites(
+                load_classes(args.decompiled), graph,
+                legacy_dynamic=args.dynamic or bool(args.config),
+            )
+            payload = {
+                "graph": graph,
+                "call_sites": call_sites,
+                "dynamic_edges": dynamic_edges,
+                "exploit_targets": sinks,
+                "sinks": sinks,  # Temporary compatibility for existing fuzzer.
+            }
 
         if args.format == "dot":
             output = _dot(graph, dynamic_edges)

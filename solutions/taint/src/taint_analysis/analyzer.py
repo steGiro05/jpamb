@@ -28,6 +28,7 @@ from taint_analysis.summaries import (
     apply_summary,
     builtin_summary,
     inspect_sinks,
+    matching_sinks,
 )
 from taint_analysis.transfers import transfer_base
 
@@ -194,7 +195,7 @@ class TaintAnalyzer:
     def _invoke(
         self, pc: PC, instruction: InvokeInstruction, state: TaintState
     ) -> None:
-        if any(sink.method == instruction.method for sink in self.sinks):
+        if matching_sinks(instruction.method, self.sinks):
             for finding in inspect_sinks(
                 pc,
                 instruction,

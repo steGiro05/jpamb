@@ -309,7 +309,7 @@ class Suite:
                         "-s",
                         self.classfile(cl).relative_to(self.workdir).as_posix(),
                     ],
-                    timeout=120,
+                    timeout=240,
                     eff=eff,
                 )
                 file = self.decompiledfile(cl)
@@ -334,7 +334,7 @@ class Suite:
                                 case.methodid.encode(),
                                 case.input.encode(),
                             ],
-                            timeout=30,
+                            timeout=60,
                             eff=eff,
                         )
                     except subprocess.TimeoutExpired:

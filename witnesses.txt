@@ -1,0 +1,52 @@
+jpamb.cases.advanced.CWE470_Dict.combinatorial_explosion:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V (s'BETA', s'ALPHA', s'GAMMA', s'BETA', s'BETA') -> ok
+jpamb.cases.advanced.CWE470_Dict.combinatorial_explosion:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V (s'ALPHA', s'BETA', s'GAMMA', s'DELTA', s'__CANARY__Command') -> assertion error
+jpamb.cases.advanced.CWE470_Dict.length_and_bounds:(Ljava/lang/String;)V (s'') -> ok
+jpamb.cases.advanced.CWE470_Dict.length_and_bounds:(Ljava/lang/String;)V (s'__ADMIN____CANARY__Command__EXEC__') -> assertion error
+jpamb.cases.advanced.CWE470_Dict.split_payload:(Ljava/lang/String;)V (s'CWE470_Dict') -> ok
+jpamb.cases.advanced.CWE470_Dict.split_payload:(Ljava/lang/String;)V (s'AUTH:EXEC:__CANARY__Command') -> assertion error
+jpamb.cases.advanced.CWE470_Dict.wrapped_payload:(Ljava/lang/String;)V (s'CMD_START:') -> ok
+jpamb.cases.advanced.CWE470_Dict.wrapped_payload:(Ljava/lang/String;)V (s'CMD_START:__CANARY__Command:CMD_END') -> assertion error
+jpamb.cases.advanced.CWE470_Graph.complex_multiple_checks:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V (s'Deep_Dispatcher', s'Chain3_Middle', s'__CANARY__Command') -> ok
+jpamb.cases.advanced.CWE470_Graph.complex_multiple_checks:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V (s'AUTH_ADMIN', s'TOKEN_99', s'__CANARY__Command') -> assertion error
+jpamb.cases.advanced.CWE470_Graph.deadend_callgraph:(Ljava/lang/String;Ljava/lang/String;)V (s'Chain3_Middle', s'REAL') -> ok
+jpamb.cases.advanced.CWE470_Graph.deadend_callgraph:(Ljava/lang/String;Ljava/lang/String;)V (s'REAL', s'__CANARY__Command') -> assertion error
+jpamb.cases.advanced.CWE470_Graph.many_params_deep_sink:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V (s'BETA', s'Chain3_End', s'DeadEnd_Router', s'Chain3_End', s'') -> ok
+jpamb.cases.advanced.CWE470_Graph.post_reflection_chain:(Ljava/lang/String;)V (s'PreChain_Handler') -> ok
+jpamb.cases.advanced.CWE470_Graph.post_reflection_chain:(Ljava/lang/String;)V (s'Chain3_Start') -> assertion error
+jpamb.cases.advanced.CWE470_Graph.pre_reflection_chain:(Ljava/lang/String;Ljava/lang/String;)V (s'CWE470_Graph', s'Chain3_End') -> ok
+jpamb.cases.advanced.CWE470_Graph.pre_reflection_chain:(Ljava/lang/String;Ljava/lang/String;)V (s'VALID', s'__CANARY__Command') -> assertion error
+jpamb.cases.advanced.CWE470_Naive.blacklist_evasion:(Ljava/lang/String;)V (s'SafeWrapperCommand') -> assertion error
+jpamb.cases.advanced.CWE470_Naive.blacklist_evasion:(Ljava/lang/String;)V (s'SafeCommand') -> ok
+jpamb.cases.advanced.CWE470_Naive.direct_reflection:(Ljava/lang/String;)V (s'__CANARY__Command') -> assertion error
+jpamb.cases.advanced.CWE470_Naive.direct_reflection:(Ljava/lang/String;)V (s'SafeCommand') -> ok
+jpamb.cases.advanced.CWE470_Naive.int_boolean_guarded:(Ljava/lang/String;I)V (s'', -1) -> ok
+jpamb.cases.advanced.CWE470_Naive.int_boolean_guarded:(Ljava/lang/String;I)V (s'__CANARY__Command', 1) -> assertion error
+jpamb.cases.advanced.CWE470_Naive.int_guarded:(Ljava/lang/String;I)V (s'SafeCommand', 2147483647) -> ok
+jpamb.cases.advanced.CWE470_Naive.int_guarded:(Ljava/lang/String;I)V (s'SafeWrapperCommand', 4) -> assertion error
+jpamb.cases.advanced.CWE470_Naive.math_guarded:(Ljava/lang/String;II)V (s'__CANARY__Command', 3, 2) -> ok
+jpamb.cases.advanced.CWE470_Naive.math_guarded:(Ljava/lang/String;II)V (s'__CANARY__Command', 18, 0) -> assertion error
+jpamb.cases.advanced.CWE502_Dict.combinatorial_auth:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V (s'SER|__CANARY__Command|', s'SER|ParametricGadget|8|API_KEY_99', s'v2', s'SER|SafeGadget|', s'v2') -> ok
+jpamb.cases.advanced.CWE502_Dict.combinatorial_auth:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V (s'API_KEY_99', s'v2', s'PROD', s'admin', s'SER|__CANARY__Command|') -> assertion error
+jpamb.cases.advanced.CWE502_Dict.envelope_and_object_params:(Ljava/lang/String;)V (s'SER|SafeGadget|') -> ok
+jpamb.cases.advanced.CWE502_Dict.envelope_and_object_params:(Ljava/lang/String;)V (s'ENVELOPE:SER|__CANARY__Command|') -> assertion error
+jpamb.cases.advanced.CWE502_Dict.protocol_split:(Ljava/lang/String;)V (s'SER|ParametricGadget|1|TRUSTED') -> ok
+jpamb.cases.advanced.CWE502_Dict.protocol_split:(Ljava/lang/String;)V (s'V1.0:TRUSTED:SER|__CANARY__Command|') -> assertion error
+jpamb.cases.advanced.CWE502_Dict.signed_envelope:(Ljava/lang/String;)V (s'SER|SafeGadget|') -> ok
+jpamb.cases.advanced.CWE502_Dict.signed_envelope:(Ljava/lang/String;)V (s'OBJ_START_SER|__CANARY__Command|_OBJ_END') -> assertion error
+jpamb.cases.advanced.CWE502_Graph.deadend_callgraph:(Ljava/lang/String;)V (s'SER|Chain2_End|') -> ok
+jpamb.cases.advanced.CWE502_Graph.deadend_callgraph:(Ljava/lang/String;)V (s'SER|Chain4_Start|REAL') -> assertion error
+jpamb.cases.advanced.CWE502_Graph.multiple_checks:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V (s'', s'SER|Chain3_End|', s'SER|Chain4_Real|') -> ok
+jpamb.cases.advanced.CWE502_Graph.scattered_checks_chain:(Ljava/lang/String;)V (s'SER|Chain2_Start|') -> ok
+jpamb.cases.advanced.CWE502_Graph.scattered_checks_chain:(Ljava/lang/String;)V (s'SER|Chain3_Start|ROOT|EXEC') -> assertion error
+jpamb.cases.advanced.CWE502_Graph.two_step_chain:(Ljava/lang/String;)V (s'SER|Chain2_End|') -> ok
+jpamb.cases.advanced.CWE502_Graph.two_step_chain:(Ljava/lang/String;)V (s'SER|Chain2_Start|') -> assertion error
+jpamb.cases.advanced.CWE502_Naive.blacklist_deserialization:(Ljava/lang/String;)V (s'SER|ParametricGadget|2') -> ok
+jpamb.cases.advanced.CWE502_Naive.blacklist_deserialization:(Ljava/lang/String;)V (s'SER|UpdatedLibrary|') -> assertion error
+jpamb.cases.advanced.CWE502_Naive.direct_deserialization:(Ljava/lang/String;)V (s'') -> ok
+jpamb.cases.advanced.CWE502_Naive.direct_deserialization:(Ljava/lang/String;)V (s'SER|UpdatedLibrary|') -> assertion error
+jpamb.cases.advanced.CWE502_Naive.int_boolean_guarded:(Ljava/lang/String;I)V (s'SER|NotMaintainedDependency|', -1) -> ok
+jpamb.cases.advanced.CWE502_Naive.int_boolean_guarded:(Ljava/lang/String;I)V (s'SER|__CANARY__Command|9', 1) -> assertion error
+jpamb.cases.advanced.CWE502_Naive.int_guarded_function:(Ljava/lang/String;I)V (s'SER|ParametricGadget|7', 10) -> ok
+jpamb.cases.advanced.CWE502_Naive.int_guarded_function:(Ljava/lang/String;I)V (s'SER|UpdatedLibrary|:SER', 7) -> assertion error
+jpamb.cases.advanced.CWE502_Naive.object_param_deserialization:(Ljava/lang/String;)V (s'SER|NotMaintainedDependency|') -> ok
+jpamb.cases.advanced.CWE502_Naive.object_param_deserialization:(Ljava/lang/String;)V (s'SER|__CANARY__Command|') -> assertion error

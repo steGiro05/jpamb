@@ -1,0 +1,239 @@
+{
+  "jpamb.Runtime.<clinit>:()V": [],
+  "jpamb.Runtime.<init>:()V": [],
+  "jpamb.Runtime.cases:(Ljava/lang/reflect/Method;)[Ljpamb/utils/Case;": [
+    "jpamb.utils.Cases.value:()[Ljpamb/utils/Case;"
+  ],
+  "jpamb.Runtime.lambda$main$0:(Ljava/lang/Class;)Ljava/util/stream/Stream;": [],
+  "jpamb.Runtime.main:([Ljava/lang/String;)V": [
+    "jpamb.Runtime.cases:(Ljava/lang/reflect/Method;)[Ljpamb/utils/Case;",
+    "jpamb.Runtime.parseMethodSignature:(Ljava/lang/String;)[Ljava/lang/Class;",
+    "jpamb.Runtime.printMethodSignature:(Ljava/lang/reflect/Method;)Ljava/lang/String;",
+    "jpamb.utils.Case.value:()Ljava/lang/String;",
+    "jpamb.utils.CaseContent.parse:(Ljava/lang/String;)Ljpamb/utils/CaseContent;",
+    "jpamb.utils.InputParser.parse:(Ljava/lang/String;)[Ljava/lang/Object;"
+  ],
+  "jpamb.Runtime.parseMethodSignature:(Ljava/lang/String;)[Ljava/lang/Class;": [
+    "jpamb.utils.InputParser$ParseError.<init>:(Ljava/lang/String;Ljava/lang/String;)V"
+  ],
+  "jpamb.Runtime.printMethodSignature:(Ljava/lang/reflect/Method;)Ljava/lang/String;": [
+    "jpamb.Runtime.printType:(Ljava/lang/Class;Ljava/lang/StringBuilder;)V"
+  ],
+  "jpamb.Runtime.printType:(Ljava/lang/Class;Ljava/lang/StringBuilder;)V": [],
+  "jpamb.cases.Arrays.<clinit>:()V": [],
+  "jpamb.cases.Arrays.<init>:()V": [],
+  "jpamb.cases.Arrays.arrayContent:()V": [],
+  "jpamb.cases.Arrays.arrayContentAboveMinus13:()V": [],
+  "jpamb.cases.Arrays.arrayInBounds:()V": [],
+  "jpamb.cases.Arrays.arrayIsNull:()V": [],
+  "jpamb.cases.Arrays.arrayIsNullLength:()V": [],
+  "jpamb.cases.Arrays.arrayLength:()V": [],
+  "jpamb.cases.Arrays.arrayNotEmpty:([I)V": [],
+  "jpamb.cases.Arrays.arrayOutOfBounds:()V": [],
+  "jpamb.cases.Arrays.arraySometimesNull:(I)V": [],
+  "jpamb.cases.Arrays.arraySpellsHello:([C)V": [],
+  "jpamb.cases.Arrays.arraySumIsLarge:([I)V": [],
+  "jpamb.cases.Arrays.binarySearch:(I)V": [],
+  "jpamb.cases.Calls.<clinit>:()V": [],
+  "jpamb.cases.Calls.<init>:()V": [],
+  "jpamb.cases.Calls.allPrimesArePositive:(I)V": [
+    "jpamb.cases.Calls.generatePrimeArray:(I)[I"
+  ],
+  "jpamb.cases.Calls.assertFalse:()V": [],
+  "jpamb.cases.Calls.assertIf:(Z)V": [
+    "jpamb.cases.Calls.assertFalse:()V",
+    "jpamb.cases.Calls.assertTrue:()V"
+  ],
+  "jpamb.cases.Calls.assertTrue:()V": [],
+  "jpamb.cases.Calls.callsAssertFalse:()V": [
+    "jpamb.cases.Calls.assertFalse:()V"
+  ],
+  "jpamb.cases.Calls.callsAssertFib:(I)V": [
+    "jpamb.cases.Calls.fib:(I)I"
+  ],
+  "jpamb.cases.Calls.callsAssertIf:(Z)V": [
+    "jpamb.cases.Calls.assertIf:(Z)V"
+  ],
+  "jpamb.cases.Calls.callsAssertIfWithTrue:()V": [
+    "jpamb.cases.Calls.assertIf:(Z)V"
+  ],
+  "jpamb.cases.Calls.callsAssertTrue:()V": [
+    "jpamb.cases.Calls.assertTrue:()V"
+  ],
+  "jpamb.cases.Calls.fib:(I)I": [
+    "jpamb.cases.Calls.fib:(I)I"
+  ],
+  "jpamb.cases.Calls.generatePrimeArray:(I)[I": [],
+  "jpamb.cases.Dependent.<clinit>:()V": [],
+  "jpamb.cases.Dependent.<init>:()V": [],
+  "jpamb.cases.Dependent.badNormalizedDistance:(II)I": [],
+  "jpamb.cases.Dependent.divisionLoop:(I)V": [],
+  "jpamb.cases.Dependent.normalizedDistance:(II)I": [],
+  "jpamb.cases.Dependent.safeDivByN:(I)I": [],
+  "jpamb.cases.Loops.<clinit>:()V": [],
+  "jpamb.cases.Loops.<init>:()V": [],
+  "jpamb.cases.Loops.forever:()V": [],
+  "jpamb.cases.Loops.neverAsserts:()V": [],
+  "jpamb.cases.Loops.neverDivides:()I": [],
+  "jpamb.cases.Loops.terminates:()V": [],
+  "jpamb.cases.Simple.<clinit>:()V": [],
+  "jpamb.cases.Simple.<init>:()V": [],
+  "jpamb.cases.Simple.assertBoolean:(Z)V": [],
+  "jpamb.cases.Simple.assertFalse:()V": [],
+  "jpamb.cases.Simple.assertInteger:(I)V": [],
+  "jpamb.cases.Simple.assertPositive:(I)V": [],
+  "jpamb.cases.Simple.assertTrue:()V": [],
+  "jpamb.cases.Simple.checkBeforeAssert:(I)V": [],
+  "jpamb.cases.Simple.checkBeforeDivideByN2:(I)I": [],
+  "jpamb.cases.Simple.checkBeforeDivideByN:(I)I": [],
+  "jpamb.cases.Simple.divideByN:(I)I": [],
+  "jpamb.cases.Simple.divideByNMinus10054203:(I)I": [],
+  "jpamb.cases.Simple.divideByZero:()I": [],
+  "jpamb.cases.Simple.divideZeroByZero:(II)I": [],
+  "jpamb.cases.Simple.doNothing:()V": [],
+  "jpamb.cases.Simple.earlyReturn:()I": [],
+  "jpamb.cases.Simple.justAdd:(II)I": [],
+  "jpamb.cases.Simple.justMulitply:(II)I": [],
+  "jpamb.cases.Simple.justReturn:()I": [],
+  "jpamb.cases.Simple.justReturnNothing:()V": [],
+  "jpamb.cases.Simple.multiError:(Z)I": [],
+  "jpamb.cases.Strings.<clinit>:()V": [],
+  "jpamb.cases.Strings.<init>:()V": [],
+  "jpamb.cases.Strings.checkComplexSequence:(Ljava/lang/String;)V": [],
+  "jpamb.cases.Strings.checkExtension:(Ljava/lang/String;)V": [],
+  "jpamb.cases.Strings.sayHello2:(Ljava/lang/String;)V": [],
+  "jpamb.cases.Strings.sayHello3:(Ljava/lang/String;)V": [],
+  "jpamb.cases.Strings.sayHello:(Ljava/lang/String;)V": [],
+  "jpamb.cases.Tricky.<clinit>:()V": [],
+  "jpamb.cases.Tricky.<init>:()V": [],
+  "jpamb.cases.Tricky.collatz:(I)V": [],
+  "jpamb.cases.advanced.CWE470$SafeCommand.<init>:()V": [],
+  "jpamb.cases.advanced.CWE470$SafeCommand.doAction:()V": [],
+  "jpamb.cases.advanced.CWE470$SafeWrapperCommand.<init>:()V": [
+    "jpamb.cases.advanced.CWE470$__CANARY__Command.<init>:()V"
+  ],
+  "jpamb.cases.advanced.CWE470$__CANARY__Command.<init>:()V": [
+    "jpamb.cases.advanced.CWE470.canary:()V"
+  ],
+  "jpamb.cases.advanced.CWE470.<init>:()V": [],
+  "jpamb.cases.advanced.CWE470.canary:()V": [],
+  "jpamb.cases.advanced.CWE470.strict_safe_dispatcher:(Ljava/lang/String;)V": [
+    "jpamb.cases.advanced.CWE470$SafeCommand.doAction:()V"
+  ],
+  "jpamb.cases.advanced.CWE470.unsafe_dispatcher:(Ljava/lang/String;)V": [
+    "jpamb.cases.advanced.CWE470$SafeCommand.doAction:()V"
+  ],
+  "jpamb.cases.advanced.CWE470.weak_dispatcher:(Ljava/lang/String;)V": [
+    "jpamb.cases.advanced.CWE470$SafeCommand.doAction:()V"
+  ],
+  "jpamb.cases.advanced.CWE502$DownGradableLibrary.<init>:(I)V": [
+    "jpamb.cases.advanced.CWE502$NotMaintainedDependency.<init>:()V"
+  ],
+  "jpamb.cases.advanced.CWE502$DummyButton.<init>:()V": [],
+  "jpamb.cases.advanced.CWE502$NotMaintainedDependency.<init>:()V": [
+    "jpamb.cases.advanced.CWE502$__CANARY__Command.<init>:()V"
+  ],
+  "jpamb.cases.advanced.CWE502$SafeCommand.<init>:()V": [],
+  "jpamb.cases.advanced.CWE502$SafeCommand.doAction:()V": [],
+  "jpamb.cases.advanced.CWE502$SafeWrapperCommand.<init>:()V": [
+    "jpamb.cases.advanced.CWE502$__CANARY__Command.<init>:()V"
+  ],
+  "jpamb.cases.advanced.CWE502$UpdatedLibrary.<init>:()V": [
+    "jpamb.cases.advanced.CWE502$NotMaintainedDependency.<init>:()V"
+  ],
+  "jpamb.cases.advanced.CWE502$__CANARY__Command.<init>:()V": [
+    "jpamb.cases.advanced.CWE502.canary:()V"
+  ],
+  "jpamb.cases.advanced.CWE502.<init>:()V": [],
+  "jpamb.cases.advanced.CWE502.blacklist_deserialization:(Ljava/lang/String;)V": [
+    "jpamb.cases.advanced.CWE502.simulateReadObject:(Ljava/lang/String;)Ljava/lang/Object;",
+    "jpamb.cases.advanced.CWE502.simulateResolveClassName:(Ljava/lang/String;)Ljava/lang/String;"
+  ],
+  "jpamb.cases.advanced.CWE502.canary:()V": [],
+  "jpamb.cases.advanced.CWE502.insecure_deserialization:(Ljava/lang/String;)V": [
+    "jpamb.cases.advanced.CWE502.simulateReadObject:(Ljava/lang/String;)Ljava/lang/Object;"
+  ],
+  "jpamb.cases.advanced.CWE502.simulateReadObject:(Ljava/lang/String;)Ljava/lang/Object;": [
+    "jpamb.cases.advanced.CWE502$DownGradableLibrary.<init>:(I)V",
+    "jpamb.cases.advanced.CWE502$DummyButton.<init>:()V",
+    "jpamb.cases.advanced.CWE502$SafeCommand.<init>:()V",
+    "jpamb.cases.advanced.CWE502$UpdatedLibrary.<init>:()V",
+    "jpamb.cases.advanced.CWE502$__CANARY__Command.<init>:()V",
+    "jpamb.cases.advanced.CWE502.simulateResolveClassName:(Ljava/lang/String;)Ljava/lang/String;"
+  ],
+  "jpamb.cases.advanced.CWE502.simulateResolveClassName:(Ljava/lang/String;)Ljava/lang/String;": [],
+  "jpamb.cases.advanced.CWE502.whitelist_deserialization:(Ljava/lang/String;)V": [
+    "jpamb.cases.advanced.CWE502.simulateReadObject:(Ljava/lang/String;)Ljava/lang/Object;",
+    "jpamb.cases.advanced.CWE502.simulateResolveClassName:(Ljava/lang/String;)Ljava/lang/String;"
+  ],
+  "jpamb.utils.Case.value:()Ljava/lang/String;": [],
+  "jpamb.utils.CaseContent$ResultType.$values:()[Ljpamb/utils/CaseContent;": [],
+  "jpamb.utils.CaseContent$ResultType.<clinit>:()V": [
+    "jpamb.utils.CaseContent$ResultType.<init>:(Ljava/lang/String;I)V"
+  ],
+  "jpamb.utils.CaseContent$ResultType.<init>:(Ljava/lang/String;I)V": [],
+  "jpamb.utils.CaseContent$ResultType.fromThrowable:(Ljava/lang/Throwable;)Ljpamb/utils/CaseContent;": [],
+  "jpamb.utils.CaseContent$ResultType.parse:(Ljava/lang/String;)Ljpamb/utils/CaseContent;": [],
+  "jpamb.utils.CaseContent$ResultType.toString:()Ljava/lang/String;": [],
+  "jpamb.utils.CaseContent$ResultType.valueOf:(Ljava/lang/String;)Ljpamb/utils/CaseContent;": [],
+  "jpamb.utils.CaseContent$ResultType.values:()[Ljpamb/utils/CaseContent;": [],
+  "jpamb.utils.CaseContent.<init>:([Ljava/lang/Object;Ljpamb/utils/CaseContent;)V": [],
+  "jpamb.utils.CaseContent.equals:(Ljava/lang/Object;)Z": [],
+  "jpamb.utils.CaseContent.hashCode:()I": [],
+  "jpamb.utils.CaseContent.params:()[Ljava/lang/Object;": [],
+  "jpamb.utils.CaseContent.parse:(Ljava/lang/String;)Ljpamb/utils/CaseContent;": [
+    "jpamb.utils.InputParser.parse:(Ljava/lang/String;)[Ljava/lang/Object;"
+  ],
+  "jpamb.utils.CaseContent.result:()Ljpamb/utils/CaseContent;": [],
+  "jpamb.utils.CaseContent.toInputString:(Ljava/lang/Object;)Ljava/lang/String;": [],
+  "jpamb.utils.CaseContent.toString:()Ljava/lang/String;": [
+    "jpamb.utils.CaseContent$ResultType.toString:()Ljava/lang/String;"
+  ],
+  "jpamb.utils.Cases.value:()[Ljpamb/utils/Case;": [],
+  "jpamb.utils.InputParser$ParseError.<init>:(Ljava/lang/String;Ljava/lang/String;)V": [],
+  "jpamb.utils.InputParser.<init>:(Ljava/lang/String;)V": [
+    "jpamb.utils.InputParser.nextToken:()V"
+  ],
+  "jpamb.utils.InputParser.expect:(Ljava/lang/String;)V": [
+    "jpamb.utils.InputParser.expected:(Ljava/lang/String;)V",
+    "jpamb.utils.InputParser.nextToken:()V"
+  ],
+  "jpamb.utils.InputParser.expected:(Ljava/lang/String;)V": [
+    "jpamb.utils.InputParser$ParseError.<init>:(Ljava/lang/String;Ljava/lang/String;)V"
+  ],
+  "jpamb.utils.InputParser.nextToken:()V": [],
+  "jpamb.utils.InputParser.parse:(Ljava/lang/String;)[Ljava/lang/Object;": [
+    "jpamb.utils.InputParser.<init>:(Ljava/lang/String;)V",
+    "jpamb.utils.InputParser.parseInputs:()[Ljava/lang/Object;"
+  ],
+  "jpamb.utils.InputParser.parseCharList:()Ljava/lang/Object;": [
+    "jpamb.utils.InputParser.expect:(Ljava/lang/String;)V",
+    "jpamb.utils.InputParser.expected:(Ljava/lang/String;)V",
+    "jpamb.utils.InputParser.nextToken:()V"
+  ],
+  "jpamb.utils.InputParser.parseInput:()Ljava/lang/Object;": [
+    "jpamb.utils.InputParser.expected:(Ljava/lang/String;)V",
+    "jpamb.utils.InputParser.nextToken:()V",
+    "jpamb.utils.InputParser.parseCharList:()Ljava/lang/Object;",
+    "jpamb.utils.InputParser.parseIntList:()Ljava/lang/Object;"
+  ],
+  "jpamb.utils.InputParser.parseInputs:()[Ljava/lang/Object;": [
+    "jpamb.utils.InputParser.expect:(Ljava/lang/String;)V",
+    "jpamb.utils.InputParser.expected:(Ljava/lang/String;)V",
+    "jpamb.utils.InputParser.nextToken:()V",
+    "jpamb.utils.InputParser.parseInput:()Ljava/lang/Object;"
+  ],
+  "jpamb.utils.InputParser.parseIntList:()Ljava/lang/Object;": [
+    "jpamb.utils.InputParser.expect:(Ljava/lang/String;)V",
+    "jpamb.utils.InputParser.expected:(Ljava/lang/String;)V",
+    "jpamb.utils.InputParser.nextToken:()V"
+  ],
+  "jpamb.utils.Tag$TagType.$values:()[Ljpamb/utils/Tag;": [],
+  "jpamb.utils.Tag$TagType.<clinit>:()V": [
+    "jpamb.utils.Tag$TagType.<init>:(Ljava/lang/String;I)V"
+  ],
+  "jpamb.utils.Tag$TagType.<init>:(Ljava/lang/String;I)V": [],
+  "jpamb.utils.Tag$TagType.valueOf:(Ljava/lang/String;)Ljpamb/utils/Tag;": [],
+  "jpamb.utils.Tag$TagType.values:()[Ljpamb/utils/Tag;": [],
+  "jpamb.utils.Tag.value:()[Ljpamb/utils/Tag;": []
+}

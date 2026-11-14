@@ -1,0 +1,59 @@
+{
+  "analyzer_config": {
+    "version": "1.0",
+    "vulnerabilities": [
+      {
+        "cwe": "CWE-470",
+        "name": "Unsafe Reflection",
+        "enabled": true,
+        "sinks": [
+          "__CANARY__Command.<init>"
+        ],
+        "dynamic_sites": [
+          {
+            "class_name": "java.lang.Class",
+            "method_name": "forName",
+            "kind": "reflection"
+          },
+          {
+            "class_name": "java.lang.Class",
+            "method_name": "newInstance",
+            "kind": "reflection"
+          },
+          {
+            "class_name": "java.lang.reflect.Constructor",
+            "method_name": "newInstance",
+            "kind": "reflection"
+          },
+          {
+            "class_name": "java.lang.reflect.Method",
+            "method_name": "invoke",
+            "kind": "reflection"
+          },
+          {
+            "class_name": "java.lang.ClassLoader",
+            "method_name": "loadClass",
+            "kind": "reflection"
+          },
+          {
+            "class_name": "java.net.URLClassLoader",
+            "method_name": "newInstance",
+            "kind": "reflection"
+          }
+        ]
+      },
+      {
+        "cwe": "CWE-502",
+        "name": "Insecure Deserialization",
+        "enabled": true,
+        "sinks": [
+          "__CANARY__Command.<init>"
+        ],
+        "dynamic_sites": [],
+        "stubs": {
+          "simulateReadObject": "deserialization"
+        }
+      }
+    ]
+  }
+}
