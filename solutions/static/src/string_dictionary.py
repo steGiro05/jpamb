@@ -27,26 +27,26 @@ Commands (run from the jpamb folder). The optional TARGET can be a JPAMB
 method ID, a method name, or the file of a class (.java, .json or .class):
 
   # Analyse one method (list of entries)
-  uv run python solutions/syntactic/src/string_dictionary.py 'jpamb.cases.Strings.sayHello:(Ljava/lang/String;)V'
+  uv run python solutions/static/src/string_dictionary.py 'jpamb.cases.Strings.sayHello:(Ljava/lang/String;)V'
 
   # Analyse every method with that name (results grouped by method ID)
-  uv run python solutions/syntactic/src/string_dictionary.py unsafe_dispatcher
+  uv run python solutions/static/src/string_dictionary.py unsafe_dispatcher
   
   # Analyse a class using its Java file
-  uv run python solutions/syntactic/src/string_dictionary.py cases/jpamb/cases/advanced/CWE470.java
+  uv run python solutions/static/src/string_dictionary.py cases/jpamb/cases/advanced/CWE470.java
 
   # Analyse one class by name (results grouped by method name)
-  uv run python solutions/syntactic/src/string_dictionary.py --class jpamb.cases.advanced.CWE470
+  uv run python solutions/static/src/string_dictionary.py --class jpamb.cases.advanced.CWE470
 
   # Get one list of entries from all benchmark classes
-  uv run python solutions/syntactic/src/string_dictionary.py --all
+  uv run python solutions/static/src/string_dictionary.py --all
 
   # Get entries for each method, using full method IDs
-  uv run python solutions/syntactic/src/string_dictionary.py --per-method
+  uv run python solutions/static/src/string_dictionary.py --per-method
 
   # Write the JSON to string-dictionary.json (or to a path of your choice)
-  uv run python solutions/syntactic/src/string_dictionary.py --per-method --write-json
-  uv run python solutions/syntactic/src/string_dictionary.py unsafe_dispatcher --output out/dict.json
+  uv run python solutions/static/src/string_dictionary.py --per-method --write-json
+  uv run python solutions/static/src/string_dictionary.py unsafe_dispatcher --output out/dict.json
 
   # Run our tests
   uv run pytest -q tests/test_string_dictionary.py

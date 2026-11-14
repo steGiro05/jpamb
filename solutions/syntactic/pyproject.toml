@@ -20,7 +20,6 @@ syntactic-treesitter = "syntactic_treesitter:main"
 syntactic-regex = "syntactic_regex:main"
 syntactic-bytecode = "syntactic_bytecode:main"
 call-graph = "call_graph:main"
-string-dictionary = "string_dictionary:main"
 
 [tool.uv.sources]
 jpamb = { path = "../../", editable = true }
