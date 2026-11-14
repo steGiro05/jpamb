@@ -9,10 +9,7 @@ from steps.base import Fuzzer, _debug_log
 from steps.naive import NaiveFuzzer
 from steps.dictionary import DictFuzzer
 from steps.graph import GraphFuzzer
-
-class TaintFuzzer(Fuzzer):
-    def generate_values(self, trial: int) -> list:
-        return []
+from steps.taint_fuzzer import TaintFuzzer
 
 def analyse() -> int:
     methodid = jpamb.getmethodid(
