@@ -131,11 +131,11 @@ def string_char_at(string: str, index: int) -> int:
 def string_substring(s: str, begin: int, end: int = None) -> str:
     if end is None:
         if begin < 0 or begin > len(s):
-            raise ValueError(f"String index out of range: {begin}")
+            raise IndexError(f"String index out of range: {begin}")
         return s[begin:]
     
     if begin < 0 or end > len(s) or begin > end:
-        raise ValueError(f"String index out of range: begin {begin}, end {end}")
+        raise IndexError(f"String index out of range: begin {begin}, end {end}")
     
     return s[begin:end]
 
@@ -524,7 +524,7 @@ def step(bc: jpamb.Bytecode, state: jvmc.State) -> tuple[jvmc.PC, jvmc.State | s
             frame.pc += 1
 
         case jvm.InvokeStatic(method=m):
-            assert (isinstance(m, jvm.AbsMethodID), f"expected method id but got {m}")
+            assert isinstance(m, jvm.AbsMethodID), f"expected method id but got {m}"
             len_params = len(m.methodid.params)
 
             print(f"param length: {len_params}", file=sys.stderr)

@@ -38,6 +38,7 @@ from taint_analysis.summaries import (
     apply_summary,
     builtin_summary,
     inspect_sinks,
+    matching_sinks,
     propagating_summary,
     sanitizer_summary,
 )
@@ -89,6 +90,7 @@ __all__ = [
     "apply_summary",
     "builtin_summary",
     "inspect_sinks",
+    "matching_sinks",
     "propagating_summary",
     "sanitizer_summary",
 ]

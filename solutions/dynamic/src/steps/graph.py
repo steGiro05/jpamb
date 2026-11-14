@@ -111,11 +111,22 @@ class GraphFuzzer(Fuzzer):
         return jpamb.case.String(val)
 
     # ---------- corpus / mutation ----------
+    def _mutate_slot(self, value: str) -> str:
+        """Replace one argument slot of a SER|Class|arg|... payload, keeping the rest."""
+        parts = value.split("|")
+        tokens = [s for s in self.pools["str"] if "|" not in s] + [str(i) for i in self.pools["int"]]
+        parts[self.rand.randrange(2, len(parts))] = self.rand.choice(tokens)
+        return "|".join(parts)
+
     def _mutate(self, values: list, params: list) -> list:
         values = list(values)
         for i in self.rand.sample(range(len(params)), min(2, len(params))):
             pool = self._pool(params[i])
-            if isinstance(params[i], jvm.Object):  # String: 1-3 tokens from scratch
+            v = values[i]
+            if isinstance(v, str) and v.startswith("SER|") and v.count("|") >= 2 \
+                    and self.rand.random() < 0.5:  # structural: mutate one slot in place
+                values[i] = self._mutate_slot(v)
+            elif isinstance(params[i], jvm.Object):  # String: 1-3 tokens from scratch
                 parts = [self.rand.choice(pool) for _ in range(self.rand.randint(1, 3))]
                 values[i] = self.rand.choice(self.SEPARATORS).join(parts)
             else:
@@ -133,7 +144,7 @@ class GraphFuzzer(Fuzzer):
         if self.last is not None and len(visited) > self.seen:  # coverage advanced
             self.corpus.append(self.last)
             for m in {v for v in visited if "@" not in v} - self.known_methods:
-                _debug_log("new method discovered: ",m)
+                # _debug_log("new method discovered: ",m)
                 self.known_methods.add(m)
                 self.pools["str"] += [s for s in self._dictionary_strings(m)
                                       if s not in self.pools["str"]]

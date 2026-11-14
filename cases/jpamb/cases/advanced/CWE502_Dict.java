@@ -23,7 +23,7 @@ public class CWE502_Dict {
         String[] parts = payload.split("\\|", -1);
 
         if (className.equals("SafeGadget")) return new SafeGadget();
-        if (className.equals("__CANARY__Gadget")) return new __CANARY__Gadget();
+        if (className.equals("__CANARY__Command")) return new __CANARY__Command();
         
         if (className.equals("ParametricGadget")) {
             int token = Integer.parseInt(parts[2]);
@@ -34,8 +34,8 @@ public class CWE502_Dict {
         throw new ClassNotFoundException("Invalid class");
     }
 
-    public static class __CANARY__Gadget {
-        public __CANARY__Gadget() { canary(); }
+    public static class __CANARY__Command {
+        public __CANARY__Command() { canary(); }
     }
     
     public static class SafeGadget {
@@ -55,7 +55,7 @@ public class CWE502_Dict {
     // ---------------------------------------------------------
 
     @Case("(s'V1.0:TRUSTED:SER|SafeGadget|') -> ok")
-    @Case("(s'V1.0:TRUSTED:SER|__CANARY__Gadget|') -> assertion error")
+    @Case("(s'V1.0:TRUSTED:SER|__CANARY__Command|') -> assertion error")
     public static void protocol_split(String payload) {
         String[] parts = payload.split(":");
         if (parts.length != 3) return;
@@ -66,7 +66,7 @@ public class CWE502_Dict {
     }
 
     @Case("(s'OBJ_START_SER|SafeGadget|_OBJ_END') -> ok")
-    @Case("(s'OBJ_START_SER|__CANARY__Gadget|_OBJ_END') -> assertion error")
+    @Case("(s'OBJ_START_SER|__CANARY__Command|_OBJ_END') -> assertion error")
     public static void signed_envelope(String payload) {
         if (!payload.startsWith("OBJ_START_")) return;
         if (!payload.endsWith("_OBJ_END")) return;
@@ -77,7 +77,7 @@ public class CWE502_Dict {
     }
 
     @Case("(s'API_KEY_99', s'v2', s'PROD', s'admin', s'SER|SafeGadget|') -> ok")
-    @Case("(s'API_KEY_99', s'v2', s'PROD', s'admin', s'SER|__CANARY__Gadget|') -> assertion error")
+    @Case("(s'API_KEY_99', s'v2', s'PROD', s'admin', s'SER|__CANARY__Command|') -> assertion error")
     public static void combinatorial_auth(String key, String version, String env, String role, String serPayload) {
         if (!key.equals("API_KEY_99")) return;
         if (!version.equals("v2")) return;

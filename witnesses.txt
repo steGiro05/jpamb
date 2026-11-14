@@ -1,0 +1,70 @@
+jpamb.cases.advanced.CWE470_Graph.post_reflection_chain:(Ljava/lang/String;)V (s'PreChain_Router') -> ok
+jpamb.cases.advanced.CWE470_Graph.post_reflection_chain:(Ljava/lang/String;)V (s'Chain3_Start') -> assertion error
+jpamb.cases.advanced.CWE470_Graph.post_reflection_chain:(Ljava/lang/String;)V (s'DeadEnd_Router') -> ok
+jpamb.cases.advanced.CWE470_Graph.post_reflection_chain:(Ljava/lang/String;)V (s'Chain3_Middle') -> assertion error
+jpamb.cases.advanced.CWE470_Graph.deadend_callgraph:(Ljava/lang/String;Ljava/lang/String;)V (s'Deep_Dispatcher', s'Chain3_End') -> ok
+jpamb.cases.advanced.CWE470_Graph.deadend_callgraph:(Ljava/lang/String;Ljava/lang/String;)V (s'REAL', s'__CANARY__Command') -> assertion error
+jpamb.cases.advanced.CWE502_Graph.deadend_callgraph:(Ljava/lang/String;)V (s'SER|Chain4_Fake1|') -> ok
+jpamb.cases.advanced.CWE502_Graph.deadend_callgraph:(Ljava/lang/String;)V (s'SER|__CANARY__Gadget|') -> assertion error
+jpamb.cases.advanced.CWE470_Graph.many_params_deep_sink:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V (s'', s'Chain3_Start', s'Chain3_Start', s'DeadEnd_Router', s'CWE470_Graph') -> ok
+jpamb.cases.advanced.CWE470_Graph.many_params_deep_sink:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V (s'ALPHA', s'Chain3_Middle:BETA', s'GAMMA', s'DELTA', s'Chain3_Middle') -> assertion error
+jpamb.cases.advanced.CWE470_Graph.many_params_deep_sink:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V (s'CWE470_Graph', s'', s'PreChain_Handler', s'__CANARY__Command', s'__CANARY__Command') -> ok
+jpamb.cases.advanced.CWE470_Graph.many_params_deep_sink:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V (s'ALPHA', s'BETAChain3_StartSafeCommand', s'GAMMA', s'DELTA', s'Chain3_Middle') -> assertion error
+jpamb.cases.advanced.CWE470_Graph.many_params_deep_sink:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V (s'Chain3_Start', s'BETA', s'Chain3_Middle', s'PreChain_Router', s'BETA') -> ok
+jpamb.cases.advanced.CWE470_Graph.many_params_deep_sink:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V (s'ALPHA', s'BETA', s'GAMMA', s'DELTA', s'Chain3_End') -> assertion error
+jpamb.cases.advanced.CWE470_Graph.complex_multiple_checks:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V (s'Chain3_Middle', s'Chain3_End', s'PreChain_Handler') -> ok
+jpamb.cases.advanced.CWE470_Graph.complex_multiple_checks:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V (s'AUTH_ADMIN', s'TOKEN_99', s'Chain3_End') -> assertion error
+jpamb.cases.advanced.CWE502_Graph.multiple_checks:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V (s'SER|Chain3_Start|API_|API_', s'_OK', s'SER|Chain5_End|') -> ok
+jpamb.cases.advanced.CWE502_Graph.multiple_checks:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V (s'API_ADMIN', s'TOKEN_OK', s'SER|__CANARY__Gadget|:SER|Chain2_Start|:SER|Chain4_Start|TOKEN_OK') -> assertion error
+jpamb.cases.advanced.CWE470_Graph.complex_multiple_checks:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V (s'', s'CWE470_Graph', s'PreChain_Router') -> ok
+jpamb.cases.advanced.CWE470_Graph.complex_multiple_checks:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V (s'AUTH_ADMIN', s'TOKEN_99', s'Chain3_End') -> assertion error
+jpamb.cases.advanced.CWE502_Graph.multiple_checks:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V (s'SER|Chain4_Real|', s'SER|Chain5_Start|TOKEN_OK|TOKEN_OK|API_ADMIN|', s'SER|Chain2_End|') -> ok
+jpamb.cases.advanced.CWE502_Graph.multiple_checks:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V (s'API_ADMIN', s'TOKEN_OK', s'SER|__CANARY__Gadget|') -> assertion error
+jpamb.cases.advanced.CWE502_Graph.two_step_chain:(Ljava/lang/String;)V (s'') -> ok
+jpamb.cases.advanced.CWE502_Graph.two_step_chain:(Ljava/lang/String;)V (s'SER|__CANARY__Gadget|') -> assertion error
+jpamb.cases.advanced.CWE502_Graph.scattered_checks_chain:(Ljava/lang/String;)V (s'') -> ok
+jpamb.cases.advanced.CWE502_Graph.scattered_checks_chain:(Ljava/lang/String;)V (s'SER|Chain2_Start|') -> assertion error
+jpamb.cases.advanced.CWE470_Graph.deadend_callgraph:(Ljava/lang/String;Ljava/lang/String;)V (s'FAKE', s'SafeCommand') -> ok
+jpamb.cases.advanced.CWE470_Graph.deadend_callgraph:(Ljava/lang/String;Ljava/lang/String;)V (s'REAL', s'Chain3_Middle') -> assertion error
+jpamb.cases.advanced.CWE502_Graph.deadend_callgraph:(Ljava/lang/String;)V (s'') -> ok
+jpamb.cases.advanced.CWE502_Graph.deadend_callgraph:(Ljava/lang/String;)V (s'SER|Chain2_Start|') -> assertion error
+jpamb.cases.advanced.CWE502_Graph.many_params_chain:(Ljava/lang/String;)V (s'') -> ok
+jpamb.cases.advanced.CWE502_Graph.many_params_chain:(Ljava/lang/String;)V (s'SER|Chain2_Start|') -> assertion error
+jpamb.cases.advanced.CWE502_Graph.many_params_chain:(Ljava/lang/String;)V (s'SER|SafeGadget|') -> ok
+jpamb.cases.advanced.CWE502_Graph.many_params_chain:(Ljava/lang/String;)V (s'SER|__CANARY__Gadget|') -> assertion error
+jpamb.cases.advanced.CWE470_Graph.deadend_callgraph:(Ljava/lang/String;Ljava/lang/String;)V (s'PreChain_Handler', s'REAL') -> ok
+jpamb.cases.advanced.CWE470_Graph.deadend_callgraph:(Ljava/lang/String;Ljava/lang/String;)V (s'REAL', s'__CANARY__Command') -> assertion error
+jpamb.cases.advanced.CWE502_Graph.deadend_callgraph:(Ljava/lang/String;)V (s'SER|Chain4_Fake1|') -> ok
+jpamb.cases.advanced.CWE502_Graph.deadend_callgraph:(Ljava/lang/String;)V (s'SER|Chain2_Start|') -> assertion error
+jpamb.cases.advanced.CWE470_Graph.complex_multiple_checks:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V (s'Chain3_Start', s'', s'PreChain_Router') -> ok
+jpamb.cases.advanced.CWE470_Graph.complex_multiple_checks:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V (s'AUTH_ADMIN', s'TOKEN_99', s'Chain3_Middle') -> assertion error
+jpamb.cases.advanced.CWE502_Graph.multiple_checks:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V (s'SER|Chain4_Fake1|', s'SER|Chain3_End|', s'SER|SafeGadget|') -> ok
+jpamb.cases.advanced.CWE502_Graph.multiple_checks:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V (s'API_ADMIN', s'TOKEN_OK', s'SER|__CANARY__Gadget|SER|Chain4_Start|') -> assertion error
+jpamb.cases.advanced.CWE470_Graph.complex_multiple_checks:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V (s'TOKEN_99', s'SafeCommand', s'CWE470_Graph') -> ok
+jpamb.cases.advanced.CWE470_Graph.complex_multiple_checks:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V (s'AUTH_ADMIN', s'TOKEN_99', s'__CANARY__Command') -> assertion error
+jpamb.cases.advanced.CWE470_Graph.deadend_callgraph:(Ljava/lang/String;Ljava/lang/String;)V (s'REAL', s'SafeCommand') -> ok
+jpamb.cases.advanced.CWE470_Graph.deadend_callgraph:(Ljava/lang/String;Ljava/lang/String;)V (s'REAL', s'__CANARY__Command') -> assertion error
+jpamb.cases.advanced.CWE470_Graph.many_params_deep_sink:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V (s'ALPHA', s'Deep_Dispatcher', s'', s'Chain3_End', s'') -> ok
+jpamb.cases.advanced.CWE470_Graph.many_params_deep_sink:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V (s'ALPHA', s'BETAChain3_Start', s'GAMMA', s'DELTA', s'__CANARY__Command') -> assertion error
+jpamb.cases.advanced.CWE470_Graph.post_reflection_chain:(Ljava/lang/String;)V (s'Chain3_Middle') -> ok
+jpamb.cases.advanced.CWE470_Graph.post_reflection_chain:(Ljava/lang/String;)V (s'Chain3_Start') -> assertion error
+jpamb.cases.advanced.CWE470_Graph.pre_reflection_chain:(Ljava/lang/String;Ljava/lang/String;)V (s'Deep_Dispatcher', s'__CANARY__Command') -> ok
+jpamb.cases.advanced.CWE470_Graph.pre_reflection_chain:(Ljava/lang/String;Ljava/lang/String;)V (s'VALID', s'__CANARY__Command') -> assertion error
+jpamb.cases.advanced.CWE502_Graph.deadend_callgraph:(Ljava/lang/String;)V (s'SER|Chain4_Start|') -> ok
+jpamb.cases.advanced.CWE502_Graph.deadend_callgraph:(Ljava/lang/String;)V (s'SER|Chain4_Start|REAL') -> assertion error
+jpamb.cases.advanced.CWE502_Graph.multiple_checks:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V (s'SER|Chain4_Start|API_ADMIN', s'SER|Chain4_Fake1|', s'SER|Chain3_Start|_OK|API_') -> ok
+jpamb.cases.advanced.CWE502_Graph.multiple_checks:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V (s'API_ADMIN', s'TOKEN_OK', s'SER|__CANARY__Command|') -> assertion error
+jpamb.cases.advanced.CWE502_Graph.two_step_chain:(Ljava/lang/String;)V (s'SER|Chain4_Start|') -> ok
+jpamb.cases.advanced.CWE502_Graph.two_step_chain:(Ljava/lang/String;)V (s'SER|Chain2_Start|') -> assertion error
+jpamb.cases.advanced.CWE470_Graph.deadend_callgraph:(Ljava/lang/String;Ljava/lang/String;)V (s'CWE470_Graph', s'Chain3_End') -> ok
+jpamb.cases.advanced.CWE470_Graph.deadend_callgraph:(Ljava/lang/String;Ljava/lang/String;)V (s'REAL', s'__CANARY__Command') -> assertion error
+jpamb.cases.advanced.CWE502_Graph.deadend_callgraph:(Ljava/lang/String;)V (s'SER|Chain4_Real|') -> ok
+jpamb.cases.advanced.CWE502_Graph.deadend_callgraph:(Ljava/lang/String;)V (s'SER|Chain4_Start|REAL') -> assertion error
+jpamb.cases.advanced.CWE502_Graph.scattered_checks_chain:(Ljava/lang/String;)V (s'SER|Chain3_Middle|') -> ok
+jpamb.cases.advanced.CWE502_Graph.scattered_checks_chain:(Ljava/lang/String;)V (s'SER|Chain3_Start|ROOT|EXEC') -> assertion error
+jpamb.cases.advanced.CWE502_Graph.many_params_chain:(Ljava/lang/String;)V (s'SER|SafeGadget|') -> ok
+jpamb.cases.advanced.CWE502_Graph.many_params_chain:(Ljava/lang/String;)V (s'SER|Chain5_Start|ALPHA|BETA|GAMMA|DELTA') -> assertion error
+jpamb.cases.advanced.CWE502_Graph.many_params_chain:(Ljava/lang/String;)V (s'SER|Chain4_Start|') -> ok
+jpamb.cases.advanced.CWE502_Graph.many_params_chain:(Ljava/lang/String;)V (s'SER|Chain5_Start|ALPHA|BETA|GAMMA|DELTA') -> assertion error
+jpamb.cases.advanced.CWE502_Graph.many_params_chain:(Ljava/lang/String;)V (s'SER|Chain3_Start||') -> ok
+jpamb.cases.advanced.CWE502_Graph.many_params_chain:(Ljava/lang/String;)V (s'SER|Chain5_Start|ALPHA|BETA|GAMMA|DELTA') -> assertion error

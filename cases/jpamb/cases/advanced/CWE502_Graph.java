@@ -18,12 +18,17 @@ public class CWE502_Graph {
         return parts[1];
     }
 
-    public static Object simulateReadObject(String payload) throws Exception {
+    // Each entry point accepts only two classes, like an ObjectInputFilter
+    public static Object simulateReadObject(String payload, String allowedA, String allowedB) throws Exception {
         String className = simulateResolveClassName(payload);
         String[] parts = payload.split("\\|", -1);
 
+        if (!allowedA.equals(className) && !allowedB.equals(className)) {
+            throw new ClassNotFoundException("Class not allowed");
+        }
+
         if (className.equals("SafeGadget")) return new SafeGadget();
-        if (className.equals("__CANARY__Gadget")) return new __CANARY__Gadget();
+        if (className.equals("__CANARY__Command")) return new __CANARY__Command();
         
         if (className.equals("Chain2_Start")) {
             return new Chain2_Start();
@@ -47,15 +52,15 @@ public class CWE502_Graph {
     public static class SafeGadget {
         public SafeGadget() {}
     }
-    public static class __CANARY__Gadget {
-        public __CANARY__Gadget() { canary(); }
+    public static class __CANARY__Command {
+        public __CANARY__Command() { canary(); }
     }
 
     public static class Chain2_Start {
         public Chain2_Start() { new Chain2_End(); }
     }
     public static class Chain2_End {
-        public Chain2_End() { canary(); }
+        public Chain2_End() { new __CANARY__Command(); }
     }
 
     public static class Chain3_Start {
@@ -73,7 +78,7 @@ public class CWE502_Graph {
         }
     }
     public static class Chain3_End {
-        public Chain3_End() { canary(); }
+        public Chain3_End() { new __CANARY__Command(); }
     }
 
     public static class Chain4_Start {
@@ -96,7 +101,7 @@ public class CWE502_Graph {
         }
     }
     public static class Chain4_Real {
-        public Chain4_Real() { canary(); }
+        public Chain4_Real() { new __CANARY__Command(); }
     }
 
     public static class Chain5_Start {
@@ -116,18 +121,18 @@ public class CWE502_Graph {
         }
     }
     public static class Chain5_End {
-        public Chain5_End() { canary(); }
+        public Chain5_End() { new __CANARY__Command(); }
     }
 
 
 
     @Case("(s'API_ADMIN', s'TOKEN_OK', s'SER|SafeGadget|') -> ok")
-    @Case("(s'API_ADMIN', s'TOKEN_OK', s'SER|__CANARY__Gadget|') -> assertion error")
+    @Case("(s'API_ADMIN', s'TOKEN_OK', s'SER|__CANARY__Command|') -> assertion error")
     public static void multiple_checks(String p1, String p2, String payload) {
         if (p1 != null && p1.startsWith("API_")) {
             if (p2 != null && p2.endsWith("_OK")) {
                 if ("API_ADMIN".equals(p1) && "TOKEN_OK".equals(p2)) {
-                    try { simulateReadObject(payload); } catch (Exception e) {}
+                    try { simulateReadObject(payload, "SafeGadget", "__CANARY__Command"); } catch (Exception e) {}
                 }
             }
         }
@@ -136,24 +141,24 @@ public class CWE502_Graph {
     @Case("(s'SER|SafeGadget|') -> ok")
     @Case("(s'SER|Chain2_Start|') -> assertion error")
     public static void two_step_chain(String payload) {
-        try { simulateReadObject(payload); } catch (Exception e) {}
+        try { simulateReadObject(payload, "SafeGadget", "Chain2_Start"); } catch (Exception e) {}
     }
 
     @Case("(s'SER|Chain3_Start|USER|SAFE') -> ok")
     @Case("(s'SER|Chain3_Start|ROOT|EXEC') -> assertion error")
     public static void scattered_checks_chain(String payload) {
-        try { simulateReadObject(payload); } catch (Exception e) {}
+        try { simulateReadObject(payload, "SafeGadget", "Chain3_Start"); } catch (Exception e) {}
     }
 
     @Case("(s'SER|Chain4_Start|FAKE') -> ok")
     @Case("(s'SER|Chain4_Start|REAL') -> assertion error")
     public static void deadend_callgraph(String payload) {
-        try { simulateReadObject(payload); } catch (Exception e) {}
+        try { simulateReadObject(payload, "SafeGadget", "Chain4_Start"); } catch (Exception e) {}
     }
 
     @Case("(s'SER|Chain5_Start|WRONG|BETA|GAMMA|DELTA') -> ok")
     @Case("(s'SER|Chain5_Start|ALPHA|BETA|GAMMA|DELTA') -> assertion error")
     public static void many_params_chain(String payload) {
-        try { simulateReadObject(payload); } catch (Exception e) {}
+        try { simulateReadObject(payload, "SafeGadget", "Chain5_Start"); } catch (Exception e) {}
     }
 }

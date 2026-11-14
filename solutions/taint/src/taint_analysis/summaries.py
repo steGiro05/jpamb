@@ -86,6 +86,39 @@ DEFAULT_SINKS: tuple[SinkSpec, ...] = (
 )
 
 
+# Every benchmark class (CWE502, CWE502_Graph, CWE502_Dict, ...) declares its
+# own copy of the simulated deserialization helpers, sometimes with extra
+# parameters, so they are recognised by name rather than by exact method ID.
+# The call graph treats them as stubs and resolves none of their inner calls,
+# so the analysis must never step into their bodies.
+_SIMULATED_PACKAGE = "jpamb.cases."
+_SIMULATED_PROPAGATORS = frozenset({"simulateResolveClassName", "simulateReadObject"})
+_SIMULATED_SINKS = {"simulateReadObject": "CWE-502"}
+
+
+def _is_simulated(method: jvm.AbsMethodID, names) -> bool:
+    return method.methodid.name in names and method.classname.dotted().startswith(
+        _SIMULATED_PACKAGE
+    )
+
+
+def matching_sinks(
+    method: jvm.AbsMethodID, sinks: tuple[SinkSpec, ...] = DEFAULT_SINKS
+) -> tuple[SinkSpec, ...]:
+    """Configured sinks for ``method``, plus any simulated helper by name."""
+
+    matched = tuple(sink for sink in sinks if sink.method == method)
+    if matched or not _is_simulated(method, _SIMULATED_SINKS):
+        return matched
+    return (
+        SinkSpec(
+            method,
+            _SIMULATED_SINKS[method.methodid.name],
+            sensitive_arguments=(0,),
+        ),
+    )
+
+
 def sanitizer_summary(method: jvm.AbsMethodID) -> MethodSummary:
     """Create an explicitly trusted summary that removes return-value taint."""
 
@@ -109,11 +142,13 @@ def builtin_summary(instruction: InvokeInstruction) -> MethodSummary | None:
 
     if summary := DEFAULT_SUMMARIES.get(instruction.method):
         return summary
+    if _is_simulated(instruction.method, _SIMULATED_PROPAGATORS):
+        return MethodSummary(instruction.method, argument_dependencies=(0,))
     if isinstance(instruction, jvm.InvokeDynamic):
         # JPAMB uses invokedynamic for string concatenation. Conservatively all
         # bootstrap arguments may affect the resulting string.
         return propagating_summary(instruction)
-    if instruction.method.classname == jvm.ClassName("java.lang.String"):
+    if instruction.method.classname.dotted().startswith("java."):
         return propagating_summary(instruction)
     return None
 
@@ -164,9 +199,7 @@ def inspect_sinks(
         raise ValueError("call-graph distance cannot be negative")
     operands = pop_invocation_operands(instruction, state)
     findings = []
-    for sink in sinks:
-        if instruction.method != sink.method:
-            continue
+    for sink in matching_sinks(instruction.method, sinks):
         labels = TaintSet.bottom()
         if sink.sensitive_receiver:
             if operands.receiver is None:

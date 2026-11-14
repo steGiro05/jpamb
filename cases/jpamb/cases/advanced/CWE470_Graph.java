@@ -16,7 +16,11 @@ public class CWE470_Graph {
         public SafeCommand() {}
     }
 
-    private static void invokeReflection(String shortName) {
+    // Each call site accepts only two command classes, so the fuzzer cannot
+    private static void invokeReflection(String shortName, String allowedA, String allowedB) {
+        if (!allowedA.equals(shortName) && !allowedB.equals(shortName)) {
+            return;
+        }
         try {
             String fullName = "jpamb.cases.advanced.CWE470_Graph$" + shortName;
             Class<?> cmdClass = Class.forName(fullName);
@@ -36,14 +40,14 @@ public class CWE470_Graph {
 
     public static class PreChain_Handler {
         public void handle(String payload) {
-            invokeReflection(payload);
+            invokeReflection(payload, "SafeCommand", "__CANARY__Command");
         }
     }
 
     public static class Deep_Dispatcher {
         public void dispatch(String p3, String p4, String payload) {
             if ("GAMMA".equals(p3) && "DELTA".equals(p4)) {
-                invokeReflection(payload);
+                invokeReflection(payload, "SafeCommand", "__CANARY__Command");
             }
         }
     }
@@ -88,7 +92,7 @@ public class CWE470_Graph {
         if (p1 != null && p1.startsWith("AUTH_")) {
             if (p2 != null && p2.endsWith("_99")) {
                 if ("AUTH_ADMIN".equals(p1) && "TOKEN_99".equals(p2)) {
-                    invokeReflection(payload);
+                    invokeReflection(payload, "SafeCommand", "__CANARY__Command");
                 }
             }
         }
@@ -103,7 +107,7 @@ public class CWE470_Graph {
     @Case("(s'SafeCommand') -> ok")
     @Case("(s'Chain3_Start') -> assertion error")
     public static void post_reflection_chain(String payload) {
-        invokeReflection(payload);
+        invokeReflection(payload, "SafeCommand", "Chain3_Start");
     }
 
     @Case("(s'FAKE', s'SafeCommand') -> ok")

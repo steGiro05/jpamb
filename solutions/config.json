@@ -49,13 +49,7 @@
         "sinks": [
           "__CANARY__Command.<init>"
         ],
-        "dynamic_sites": [
-          {
-            "class_name": "java.io.ObjectInputStream",
-            "method_name": "simulateReadObject",
-            "kind": "deserialization"
-          }
-        ],
+        "dynamic_sites": [],
         "stubs": {
           "simulateReadObject": "deserialization"
         }

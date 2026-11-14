@@ -17,7 +17,7 @@ def _debug_log(*args, **kwargs):
     with open('debug.log', 'a', encoding='utf-8') as f:
         print(*args, file=f, **kwargs)
 
-DEFAULT_CONFIG = Path("solutions/dynamic/src/config.json")
+DEFAULT_CONFIG = Path("solutions/config.json")
 
 
 def load_call_graph(path: Path) -> Mapping[str, Any]:
