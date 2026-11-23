@@ -1,0 +1,289 @@
+[34m[-][0m Setup suite in /home/factorymind/Desktop/uni/program_analysis/jpamb_fork/jpamb
+[34m[-][0m Skipping jpamb.cases.advanced.CWE470_Dict.combinatorial_explosion:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE470_Dict.combinatorial_explosion:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE470_Dict.length_and_bounds:(Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE470_Dict.length_and_bounds:(Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE470_Dict.split_payload:(Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE470_Dict.split_payload:(Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE470_Dict.wrapped_payload:(Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE470_Dict.wrapped_payload:(Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE470_Graph.complex_multiple_checks:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE470_Graph.complex_multiple_checks:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE470_Graph.deadend_callgraph:(Ljava/lang/String;Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE470_Graph.deadend_callgraph:(Ljava/lang/String;Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE470_Graph.many_params_deep_sink:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE470_Graph.many_params_deep_sink:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE470_Graph.post_reflection_chain:(Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE470_Graph.post_reflection_chain:(Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE470_Graph.pre_reflection_chain:(Ljava/lang/String;Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE470_Graph.pre_reflection_chain:(Ljava/lang/String;Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE470_Naive.blacklist_evasion:(Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE470_Naive.blacklist_evasion:(Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE470_Naive.direct_reflection:(Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE470_Naive.direct_reflection:(Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE470_Naive.int_boolean_guarded:(Ljava/lang/String;I)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE470_Naive.int_boolean_guarded:(Ljava/lang/String;I)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE470_Naive.int_guarded:(Ljava/lang/String;I)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE470_Naive.int_guarded:(Ljava/lang/String;I)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE470_Naive.math_guarded:(Ljava/lang/String;II)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE470_Naive.math_guarded:(Ljava/lang/String;II)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE502_Dict.combinatorial_auth:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE502_Dict.combinatorial_auth:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE502_Dict.envelope_and_object_params:(Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE502_Dict.envelope_and_object_params:(Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE502_Dict.protocol_split:(Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE502_Dict.protocol_split:(Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE502_Dict.signed_envelope:(Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE502_Dict.signed_envelope:(Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE502_Graph.deadend_callgraph:(Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE502_Graph.deadend_callgraph:(Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE502_Graph.many_params_chain:(Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE502_Graph.many_params_chain:(Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE502_Graph.multiple_checks:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE502_Graph.multiple_checks:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE502_Graph.scattered_checks_chain:(Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE502_Graph.scattered_checks_chain:(Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE502_Graph.two_step_chain:(Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE502_Graph.two_step_chain:(Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE502_Naive.blacklist_deserialization:(Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE502_Naive.blacklist_deserialization:(Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE502_Naive.direct_deserialization:(Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE502_Naive.direct_deserialization:(Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE502_Naive.int_boolean_guarded:(Ljava/lang/String;I)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE502_Naive.int_boolean_guarded:(Ljava/lang/String;I)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE502_Naive.int_guarded_function:(Ljava/lang/String;I)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE502_Naive.int_guarded_function:(Ljava/lang/String;I)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE502_Naive.object_param_deserialization:(Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE502_Naive.object_param_deserialization:(Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE470_Dict.combinatorial_explosion:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE470_Dict.length_and_bounds:(Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE470_Dict.split_payload:(Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE470_Dict.wrapped_payload:(Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE470_Graph.complex_multiple_checks:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE470_Graph.deadend_callgraph:(Ljava/lang/String;Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE470_Graph.many_params_deep_sink:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE470_Graph.post_reflection_chain:(Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE470_Graph.pre_reflection_chain:(Ljava/lang/String;Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE470_Naive.blacklist_evasion:(Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE470_Naive.direct_reflection:(Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE470_Naive.int_boolean_guarded:(Ljava/lang/String;I)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE470_Naive.int_guarded:(Ljava/lang/String;I)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE470_Naive.math_guarded:(Ljava/lang/String;II)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE502_Dict.combinatorial_auth:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE502_Dict.envelope_and_object_params:(Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE502_Dict.protocol_split:(Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE502_Dict.signed_envelope:(Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE502_Graph.deadend_callgraph:(Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE502_Graph.many_params_chain:(Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE502_Graph.multiple_checks:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE502_Graph.scattered_checks_chain:(Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE502_Graph.two_step_chain:(Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE502_Naive.blacklist_deserialization:(Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE502_Naive.direct_deserialization:(Ljava/lang/String;)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE502_Naive.int_boolean_guarded:(Ljava/lang/String;I)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE502_Naive.int_guarded_function:(Ljava/lang/String;I)V, excluded by filter
+[34m[-][0m Skipping jpamb.cases.advanced.CWE502_Naive.object_param_deserialization:(Ljava/lang/String;)V, excluded by filter
+│┌ Run taint-analysis info
+┌ Getting info about analysis
+││ [32m[+][0m Stderr
+││┌ Stdout
+│││ taint
+│││ 0.1.0
+│││ DTU Project Group 8
+│││ static,taint,python,interprocedural
+│││ Linux-7.0.0-43-generic-x86_64-with-glibc2.39
+││└ Stdout
+│└ Run taint-analysis info
+└ Getting info about analysis
+│┌ Run experiment taint-analysis 'jpamb.cases.advanced.taint_cases.deser_gadget:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V'
+┌ Iteration 1/1, Experiment 1/6 jpamb.cases.advanced.taint_cases.deser_gadget:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+││ [32m[+][0m Stderr
+││┌ Stdout
+│││ {
+│││   "classification": "flagged_unverified",
+│││   "entry_method": "jpamb.cases.advanced.taint_cases.deser_gadget:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V",
+│││   "findings": [
+│││     {
+│││       "call_site": "jpamb.cases.advanced.taint_cases.deser_gadget:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V:28",
+│││       "category": "CWE-502",
+│││       "distance_to_exploit_target": 2,
+│││       "labels": [
+│││         "p2"
+│││       ],
+│││       "relevant_parameters": [
+│││         2
+│││       ],
+│││       "taint_sink": "jpamb.cases.advanced.taint_cases.simulateReadObject:(Ljava/lang/String;)Ljava/lang/Object;"
+│││     }
+│││   ]
+│││ }
+││└ Stdout
+││ [34m[-][0m Time       : 0.28s
+││ [34m[-][0m Time (rel) : 1.472 Db
+│└ Run experiment taint-analysis 'jpamb.cases.advanced.taint_cases.deser_gadget:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V'
+│ [33m[*][0m bad line: {
+│ [33m[*][0m bad line:   "classification": "flagged_unverified",
+│ [33m[*][0m bad line:   "entry_method": "jpamb.cases.advanced.taint_cases.deser_gadget:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V",
+│ [33m[*][0m bad line:   "findings": [
+│ [33m[*][0m bad line:     {
+│ [33m[*][0m bad line:       "call_site": "jpamb.cases.advanced.taint_cases.deser_gadget:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V:28",
+│ [33m[*][0m bad line:       "category": "CWE-502",
+│ [33m[*][0m bad line:       "distance_to_exploit_target": 2,
+│ [33m[*][0m bad line:       "labels": [
+│ [33m[*][0m bad line:         "p2"
+│ [33m[*][0m bad line:       ],
+│ [33m[*][0m bad line:       "relevant_parameters": [
+│ [33m[*][0m bad line:         2
+│ [33m[*][0m bad line:       ],
+│ [33m[*][0m bad line:       "taint_sink": "jpamb.cases.advanced.taint_cases.simulateReadObject:(Ljava/lang/String;)Ljava/lang/Object;"
+│ [33m[*][0m bad line:     }
+│ [33m[*][0m bad line:   ]
+│ [33m[*][0m bad line: }
+└ Iteration 1/1, Experiment 1/6 jpamb.cases.advanced.taint_cases.deser_gadget:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+│┌ Run experiment taint-analysis 'jpamb.cases.advanced.taint_cases.deser_import:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V'
+┌ Iteration 1/1, Experiment 2/6 jpamb.cases.advanced.taint_cases.deser_import:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+││ [32m[+][0m Stderr
+││┌ Stdout
+│││ {
+│││   "classification": "flagged_unverified",
+│││   "entry_method": "jpamb.cases.advanced.taint_cases.deser_import:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V",
+│││   "findings": [
+│││     {
+│││       "call_site": "jpamb.cases.advanced.taint_cases.deser_import:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V:47",
+│││       "category": "CWE-502",
+│││       "distance_to_exploit_target": 2,
+│││       "labels": [
+│││         "p3"
+│││       ],
+│││       "relevant_parameters": [
+│││         3
+│││       ],
+│││       "taint_sink": "jpamb.cases.advanced.taint_cases.simulateReadObject:(Ljava/lang/String;)Ljava/lang/Object;"
+│││     }
+│││   ]
+│││ }
+││└ Stdout
+││ [34m[-][0m Time       : 0.25s
+││ [34m[-][0m Time (rel) : 1.429 Db
+│└ Run experiment taint-analysis 'jpamb.cases.advanced.taint_cases.deser_import:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V'
+│ [33m[*][0m bad line: {
+│ [33m[*][0m bad line:   "classification": "flagged_unverified",
+│ [33m[*][0m bad line:   "entry_method": "jpamb.cases.advanced.taint_cases.deser_import:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V",
+│ [33m[*][0m bad line:   "findings": [
+│ [33m[*][0m bad line:     {
+│ [33m[*][0m bad line:       "call_site": "jpamb.cases.advanced.taint_cases.deser_import:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V:47",
+│ [33m[*][0m bad line:       "category": "CWE-502",
+│ [33m[*][0m bad line:       "distance_to_exploit_target": 2,
+│ [33m[*][0m bad line:       "labels": [
+│ [33m[*][0m bad line:         "p3"
+│ [33m[*][0m bad line:       ],
+│ [33m[*][0m bad line:       "relevant_parameters": [
+│ [33m[*][0m bad line:         3
+│ [33m[*][0m bad line:       ],
+│ [33m[*][0m bad line:       "taint_sink": "jpamb.cases.advanced.taint_cases.simulateReadObject:(Ljava/lang/String;)Ljava/lang/Object;"
+│ [33m[*][0m bad line:     }
+│ [33m[*][0m bad line:   ]
+│ [33m[*][0m bad line: }
+└ Iteration 1/1, Experiment 2/6 jpamb.cases.advanced.taint_cases.deser_import:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+│┌ Run experiment taint-analysis 'jpamb.cases.advanced.taint_cases.deser_sanitized:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V'
+┌ Iteration 1/1, Experiment 3/6 jpamb.cases.advanced.taint_cases.deser_sanitized:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+││ [32m[+][0m Stderr
+││┌ Stdout
+│││ {
+│││   "classification": "unflagged",
+│││   "entry_method": "jpamb.cases.advanced.taint_cases.deser_sanitized:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V",
+│││   "findings": []
+│││ }
+││└ Stdout
+││ [34m[-][0m Time       : 0.26s
+││ [34m[-][0m Time (rel) : 1.501 Db
+│└ Run experiment taint-analysis 'jpamb.cases.advanced.taint_cases.deser_sanitized:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V'
+│ [33m[*][0m bad line: {
+│ [33m[*][0m bad line:   "classification": "unflagged",
+│ [33m[*][0m bad line:   "entry_method": "jpamb.cases.advanced.taint_cases.deser_sanitized:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V",
+│ [33m[*][0m bad line:   "findings": []
+│ [33m[*][0m bad line: }
+└ Iteration 1/1, Experiment 3/6 jpamb.cases.advanced.taint_cases.deser_sanitized:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+│┌ Run experiment taint-analysis 'jpamb.cases.advanced.taint_cases.reflect_command:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V'
+┌ Iteration 1/1, Experiment 4/6 jpamb.cases.advanced.taint_cases.reflect_command:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+││ [32m[+][0m Stderr
+││┌ Stdout
+│││ {
+│││   "classification": "flagged_unverified",
+│││   "entry_method": "jpamb.cases.advanced.taint_cases.reflect_command:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V",
+│││   "findings": [
+│││     {
+│││       "call_site": "jpamb.cases.advanced.taint_cases.invokeReflection:(Ljava/lang/String;)V:11",
+│││       "category": "CWE-470",
+│││       "distance_to_exploit_target": 1,
+│││       "labels": [
+│││         "p2"
+│││       ],
+│││       "relevant_parameters": [
+│││         2
+│││       ],
+│││       "taint_sink": "java.lang.Class.forName:(Ljava/lang/String;)Ljava/lang/Class;"
+│││     }
+│││   ]
+│││ }
+││└ Stdout
+││ [34m[-][0m Time       : 0.24s
+││ [34m[-][0m Time (rel) : 1.561 Db
+│└ Run experiment taint-analysis 'jpamb.cases.advanced.taint_cases.reflect_command:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V'
+│ [33m[*][0m bad line: {
+│ [33m[*][0m bad line:   "classification": "flagged_unverified",
+│ [33m[*][0m bad line:   "entry_method": "jpamb.cases.advanced.taint_cases.reflect_command:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V",
+│ [33m[*][0m bad line:   "findings": [
+│ [33m[*][0m bad line:     {
+│ [33m[*][0m '      "call_site": "jpamb.cases.advanced.taint_cases.invokeReflection:(Ljava/lang/String' not a known query
+│ [33m[*][0m bad line:       "category": "CWE-470",
+│ [33m[*][0m bad line:       "distance_to_exploit_target": 1,
+│ [33m[*][0m bad line:       "labels": [
+│ [33m[*][0m bad line:         "p2"
+│ [33m[*][0m bad line:       ],
+│ [33m[*][0m bad line:       "relevant_parameters": [
+│ [33m[*][0m bad line:         2
+│ [33m[*][0m bad line:       ],
+│ [33m[*][0m bad line:       "taint_sink": "java.lang.Class.forName:(Ljava/lang/String;)Ljava/lang/Class;"
+│ [33m[*][0m bad line:     }
+│ [33m[*][0m bad line:   ]
+│ [33m[*][0m bad line: }
+└ Iteration 1/1, Experiment 4/6 jpamb.cases.advanced.taint_cases.reflect_command:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+│┌ Run experiment taint-analysis 'jpamb.cases.advanced.taint_cases.reflect_filtered:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V'
+┌ Iteration 1/1, Experiment 5/6 jpamb.cases.advanced.taint_cases.reflect_filtered:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+││ [32m[+][0m Stderr
+││┌ Stdout
+│││ {
+│││   "classification": "unflagged",
+│││   "entry_method": "jpamb.cases.advanced.taint_cases.reflect_filtered:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V",
+│││   "findings": []
+│││ }
+││└ Stdout
+││ [34m[-][0m Time       : 0.21s
+││ [34m[-][0m Time (rel) : 1.472 Db
+│└ Run experiment taint-analysis 'jpamb.cases.advanced.taint_cases.reflect_filtered:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V'
+│ [33m[*][0m bad line: {
+│ [33m[*][0m bad line:   "classification": "unflagged",
+│ [33m[*][0m bad line:   "entry_method": "jpamb.cases.advanced.taint_cases.reflect_filtered:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V",
+│ [33m[*][0m bad line:   "findings": []
+│ [33m[*][0m bad line: }
+└ Iteration 1/1, Experiment 5/6 jpamb.cases.advanced.taint_cases.reflect_filtered:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+│┌ Run experiment taint-analysis 'jpamb.cases.advanced.taint_cases.reflect_sanitized:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V'
+┌ Iteration 1/1, Experiment 6/6 jpamb.cases.advanced.taint_cases.reflect_sanitized:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+││ [32m[+][0m Stderr
+││┌ Stdout
+│││ {
+│││   "classification": "unflagged",
+│││   "entry_method": "jpamb.cases.advanced.taint_cases.reflect_sanitized:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V",
+│││   "findings": []
+│││ }
+││└ Stdout
+││ [34m[-][0m Time       : 0.24s
+││ [34m[-][0m Time (rel) : 1.530 Db
+│└ Run experiment taint-analysis 'jpamb.cases.advanced.taint_cases.reflect_sanitized:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V'
+│ [33m[*][0m bad line: {
+│ [33m[*][0m bad line:   "classification": "unflagged",
+│ [33m[*][0m bad line:   "entry_method": "jpamb.cases.advanced.taint_cases.reflect_sanitized:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V",
+│ [33m[*][0m bad line:   "findings": []
+│ [33m[*][0m bad line: }
+└ Iteration 1/1, Experiment 6/6 jpamb.cases.advanced.taint_cases.reflect_sanitized:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V

@@ -35,3 +35,5 @@ tags
 debug.log
 
 /target/*
+# fuzzer benchmark outputs (one subfolder per configuration)
+/results/*/

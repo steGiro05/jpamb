@@ -76,6 +76,10 @@ TAINT_CASES_SANITIZE_COMMAND = _method(
     "jpamb.cases.advanced.taint_cases.sanitizeCommand:"
     "(Ljava/lang/String;)Ljava/lang/String;"
 )
+TAINT_CASES_FILTER_COMMAND = _method(
+    "jpamb.cases.advanced.taint_cases.filterCommand:"
+    "(Ljava/lang/String;)Ljava/lang/String;"
+)
 
 
 DEFAULT_SUMMARIES: dict[jvm.AbsMethodID, MethodSummary] = {
@@ -89,8 +93,8 @@ DEFAULT_SUMMARIES: dict[jvm.AbsMethodID, MethodSummary] = {
     CLASS_NEW_INSTANCE: MethodSummary(
         CLASS_NEW_INSTANCE, receiver_dependency=True
     ),
-    # TAINT_CASES_SANITIZE_PAYLOAD: MethodSummary(TAINT_CASES_SANITIZE_PAYLOAD, sanitizer=True),
-    # TAINT_CASES_SANITIZE_COMMAND: MethodSummary(TAINT_CASES_SANITIZE_COMMAND, sanitizer=True),
+    TAINT_CASES_SANITIZE_PAYLOAD: MethodSummary(TAINT_CASES_SANITIZE_PAYLOAD, sanitizer=True),
+    TAINT_CASES_SANITIZE_COMMAND: MethodSummary(TAINT_CASES_SANITIZE_COMMAND, sanitizer=True),
 }
 
 

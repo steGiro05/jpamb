@@ -23,7 +23,7 @@ def analyse() -> int:
     # rand = random.Random(0)
     rand = random.Random()
     MAX_STEPS = 200
-    MAX_TESTS = 50000
+    MAX_TESTS = int(os.environ.get("FUZZER_MAX_TESTS", 50000))
     # After the first assertion error, keep fuzzing for some trials
     EXTRA_TRIALS = 200
 

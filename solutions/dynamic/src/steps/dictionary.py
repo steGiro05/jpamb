@@ -47,7 +47,8 @@ class DictFuzzer(Fuzzer):
         return self.suite.sourcefile(self.methodid.classname).relative_to(Path.cwd())
 
     def _load_vuln_type(self, srcfile: Path):
-        filename = srcfile.name.upper()
+        # FUZZER_VULN=CWE470|CWE502 overrides the file name (files mixing both CWEs)
+        filename = os.environ.get("FUZZER_VULN", "").upper() or srcfile.name.upper()
         if filename.startswith("CWE470"):
             self.vuln_type = VulnFamily.CWE470
         elif filename.startswith("CWE502"):

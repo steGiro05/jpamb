@@ -1,3 +1,4 @@
+import os
 import jvm
 import tree_sitter
 import tree_sitter_java
@@ -32,7 +33,8 @@ class NaiveFuzzer(Fuzzer):
         self.max_tests = max_tests
 
     def _load_vuln_type(self, srcfile: Path):
-        filename = srcfile.name.upper()
+        # FUZZER_VULN=CWE470|CWE502 overrides the file name (files mixing both CWEs)
+        filename = os.environ.get("FUZZER_VULN", "").upper() or srcfile.name.upper()
         if filename.startswith("CWE470"):
             self.vuln_type = VulnFamily.CWE470
         elif filename.startswith("CWE502"):
