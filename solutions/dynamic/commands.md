@@ -50,3 +50,26 @@ java -cp target/classes:target/synthesized SynthesizedTests
 ```bash
 docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/workspace" -w /workspace ghcr.io/kalhauge/jvm2json:jdk-latest sh -c "javac -cp target/classes -d target/synthesized SynthesizedTests.java && java -cp target/classes:target/synthesized SynthesizedTests"
 ```
+
+# Fuzzer benchmark (results/)
+Runs every @Case method of the CWE files in jpamb.cases.advanced, ITERATIONS times per method.
+Hyperparameters (ITERATIONS, TIMEOUT, WORKERS, CLASSES) are constants at the top of the script;
+MAX_TESTS / MAX_STEPS are in solutions/dynamic/src/stepwise_dynamic.py.
+Output: results/<mode>/ (one .md per file, SUMMARY.md, raw.json) + results/comparison.md
+## One configuration
+```bash
+python3 results/run_fuzzer_benchmark.py naive        # or: dictionary | graph | taint (full)
+```
+## All configurations
+```bash
+for m in naive dictionary graph taint; do python3 results/run_fuzzer_benchmark.py $m; done
+```
+
+# Compare two configurations on one method (results/compare_configs.py)
+Runs the method --trials times (default 5) for each configuration and prints the median (and standard deviation) of the number of
+inputs generated before the first assertion error (runs that never find it are excluded from the median).
+The signature can be omitted if the method name is unique in its class.
+```bash
+python3 results/compare_configs.py jpamb.cases.advanced.CWE502_Graph.multiple_checks naive graph
+python3 results/compare_configs.py "jpamb.cases.advanced.CWE502_Graph.multiple_checks:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V" graph taint --trials 5 --timeout 20
+```
