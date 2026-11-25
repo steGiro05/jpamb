@@ -1,10 +1,16 @@
-# Taint Analysis Architecture - Initial Decisions
+# Taint Analysis Architecture - Decisions and Implementation Status
+
+Version note (25 November 2026): the review initially used the local checkout
+at `0adbf88`, then inspected `origin/project` at `5e4a5c0`. The local
+`taint_abstraction` branch was subsequently fast-forwarded to `5e4a5c0`, so
+both now contain the reviewed code with the two allowlist sanitizer summaries
+enabled. The review introduced no analyzer or fuzzer code changes.
 
 ## Purpose
 
 The static taint analysis identifies which parameters of a JPAMB entry method may influence values passed to security-sensitive operations. Its findings guide the fuzzer toward relevant methods, parameters, and sinks. Dynamic execution remains responsible for confirming that a reported flow is exploitable.
 
-The analysis is a **may-analysis**: it over-approximates possible flows. Within the supported model, a concrete taint flow must also appear in the abstract result. The analysis may therefore report infeasible flows, which the fuzzer can later reject or leave unverified.
+The analysis is designed as a **may-analysis**. Its label-set abstraction over-approximates explicit provenance tags, and joins can report infeasible flows. Preservation by the complete analyzer additionally depends on reference/heap coverage, summaries, and control-flow/call-graph coverage. These premises are not established for general Java programs; the proof and current implementation limits are recorded in `taint_abstraction_proof.md`.
 
 ## Scope and precision
 
@@ -37,7 +43,7 @@ Join is used when control-flow paths merge. Meet is part of the lattice definiti
 
 ## Abstract values and states
 
-The implementation will introduce a `TaintValue`, separate from the existing sign-analysis `StackValue`. Conceptually it contains:
+The implementation uses a `TaintValue`, separate from the existing sign-analysis `StackValue`. Conceptually it contains:
 
 ```text
 TaintValue
@@ -50,7 +56,7 @@ This separation is necessary because a JVM reference can simultaneously point to
 The initial implementation uses three kinds of abstract reference target:
 
 - an allocation site, identified by the program counter of an object-producing
-  instruction (`new`, or the load site of a constant string);
+  instruction (`new`, array creation, the load site of a constant string, or a summary-return site);
 - `EXTERNAL_pi`, for an object supplied through entry-method parameter `pi` and therefore allocated outside the analyzed program;
 - `NULL`, which preserves the possibility of a null reference through state joins.
 
@@ -76,7 +82,7 @@ Constants start with no labels, while entry-method parameter `i` starts with `{p
 Security sinks are defined explicitly together with their sensitive argument
 positions. The initial configuration contains
 `Class.forName(String)` argument 0 for CWE-470 and
-`CWE502.simulateReadObject(String)` argument 0 for CWE-502.
+`simulateReadObject` argument 0 for CWE-502. The original `CWE502` signature is registered explicitly; copies in classes under `jpamb.cases.*` are recognized by helper name, including signatures with additional arguments.
 `simulateResolveClassName(String)` is a taint-propagating summary, not a sink.
 The CWE-specific `canary()` is treated separately as the dynamic exploit oracle: a
 security sink indicates a potentially dangerous flow, while the canary confirms
@@ -84,13 +90,26 @@ that the simulated exploit succeeded.
 
 Unsupported library behavior, reflection, and simulated deserialization are
 handled through trusted method summaries. The initial summaries propagate taint
-through the two simulated deserialization helpers, reflective class loading and
-instantiation, string operations, and dynamic string concatenation. Only methods
-explicitly configured as trusted sanitizers may remove taint; the initial
-sanitizer set is empty. Ordinary comparisons, allowlists, or regular-expression
+through the two simulated deserialization helpers and reflective class loading and
+instantiation. The current fallback summarizes every `java.*` call and every
+`invokedynamic` by propagating invocation-input labels to its return value.
+These return-only summaries do not model heap effects or preserve returned
+aliases, and therefore are not conservative for arbitrary library behavior.
+Only methods explicitly configured as trusted sanitizers may remove taint.
+The default at `5e4a5c0`, now also used by the local branch, enables the two allowlist summaries for
+`taint_cases.sanitizePayload` and `taint_cases.sanitizeCommand` in
+`DEFAULT_SUMMARIES`. These entries were commented out in the earlier
+`0adbf88` checkout. The no-sanitizer experiment requires disabling them.
+The current code also defines
+the method ID for `filterCommand`, but does not trust it by default; the
+deliberately incorrect configuration requires adding its sanitizer summary.
+Ordinary comparisons, allowlists, or regular-expression
 checks are not automatically assumed to sanitize a value. The analysis guarantee
 is therefore conditional on the correctness of sink, sanitizer, and library
-summaries.
+summaries. With sanitizers, labels denote policy-relative unsanitized taint,
+not every raw input dependency. Removing a label requires safety for all
+downstream sink contexts to which that removal applies; the domain is not
+separated by vulnerability category.
 
 ## Fixpoint computation
 
@@ -103,7 +122,7 @@ JVM model. This limitation does not affect the normal sink-reaching paths in the
 initial JPAMB vulnerability cases, but it is part of the whole-analysis
 soundness boundary.
 
-No widening is required for the taint domain. The label set, program points, abstract reference targets, and context-insensitive return locations are finite, so abstract states can grow only a finite number of times before reaching a fixpoint.
+No widening is required for the taint domain. For finite programs with compatible JVM state shapes, stored states, continuations, returns, and findings accumulate over finite sets, so there can be only finitely many growth events. This supports termination when transfers return normally. It must not be taken as a proof that every implemented heap transfer is monotone or sound: the proof document records a static-reference-load counterexample to monotonicity under the current heap order.
 
 ## Output for the fuzzer
 
@@ -117,13 +136,38 @@ TaintFinding
   call-graph distance to the exploit target
 ```
 
-The call-graph distance is the minimum number of call edges from a method to
-the exploit target (the canary), not to the taint sink. It is computed from the
-call graph, not from the taint lattice, and can be used as part of the fuzzer's
-fitness function. A single call path is not required because a path-insensitive
-may-analysis may represent several paths simultaneously.
+The call-graph adapter uses `call_sites` (caller, opcode-list `instruction_index`,
+and `resolved_callees`) for ordinary interprocedural dispatch. Synthetic dynamic
+constructor edges remain in the method graph rather than being treated as
+ordinary calls with incompatible JVM descriptors. Reflection and simulated
+deserialization use summaries instead of interpreting the dynamically selected
+constructor bodies in the taint analyzer.
 
-Python dataclasses will be used internally. S-expressions may be used for persistence and debugging to remain consistent with the existing framework. The combined analyzer will eventually translate its result into the standard JPAMB prediction format.
+The adapter also computes reverse-BFS distances from configured
+`exploit_targets` (`sinks` is accepted as a legacy alias). A finding's distance
+is the minimum number of method-call edges from its sink-containing method to
+one of these targets, not to the taint sink. The current configuration uses
+`__CANARY__Command` constructors as exploit targets, so this is not necessarily
+the distance to the `canary()` method itself. The final fuzzer does not consume
+this distance; it uses dynamic coverage. Currently a missing finite distance
+causes the taint analysis to fail, even though distance is auxiliary metadata.
+
+Python dataclasses are used internally. `taint-analysis` emits JSON with
+`entry_method`, `classification`, and `findings`. The classification is
+`unflagged` when no configured sink finding is produced, otherwise
+`flagged_unverified`. It can load a shared call-graph artifact through
+`JPAMB_CALL_GRAPH_PATH`; otherwise it invokes `call-graph` itself.
+
+The taint-guided fuzzer reads this report from `JPAMB_TAINT_REPORT_PATH` or
+invokes the executable once. It uses categories to choose vulnerability-value
+pools and parameter indices to favor those values for relevant string inputs.
+Other parameters remain mutable. However, the current integration skips the
+entire method and reports `ok` when classification is `unflagged`. That pruning
+is a benchmark heuristic, not a safety result: omitted implicit flows,
+constant unsafe sink arguments, or unsupported heap/library behavior can
+invalidate the inference. A missing or failed report does not trigger this
+skip and instead falls back to fuzzing. Dynamic canary execution confirms a
+modeled exploit; `flagged_unverified` alone does not.
 
 ## Decisions deferred beyond the initial implementation
 

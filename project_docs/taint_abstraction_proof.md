@@ -2,13 +2,15 @@
 
 ## Scope
 
-This document proves that the proposed label-set abstraction is a sound over-approximation of explicit taint dependencies in the modeled JVM semantics. The result is intentionally narrower than a proof of the complete security tool: it shows that the `labels` component of `TaintValue` and its transfer functions do not discard a concrete dependency represented by the model. Abstract reference targets are retained separately to locate heap cells; proving the precision of points-to information is outside the scope of this label-set proof. The finite target set contains ordinary allocation sites, synthetic `EXTERNAL_pi` targets for entry-parameter objects, and the distinguished `NULL` target. `NULL` does not address a heap cell. Call-graph construction, library summaries, sink specifications, and dynamic exploit confirmation are separate concerns and appear as assumptions at the end.
+This document proves the correctness of the label-set abstraction and basic label transfer rules. It also states a **conditional** preservation theorem for an interprocedural analysis. This is not an unconditional proof of the implemented JVM analyzer: lifting the value result to heap accesses and calls additionally requires adequate reference targets, initial heaps, and method summaries. The implementation audit below records cases where these requirements are not met for general Java programs.
+
+The finite target set contains instruction sites, synthetic `EXTERNAL_pi` targets for entry-parameter objects, and the distinguished `NULL` target. `NULL` does not address a heap cell. Proving precise points-to information is unnecessary, but proving or assuming **coverage of every concrete alias and accessed location** is necessary for a whole-state soundness claim. Merely separating references from labels does not discharge this obligation.
 
 ## Concrete and abstract domains
 
-Let `L = {p0, ..., pn}` be the finite set of source labels assigned to the parameters of the JPAMB entry method. Let `V` be the set of concrete JVM values.
+Let `L = {p0, ..., p(m-1)}` be the finite set of source labels assigned to the `m` parameters of the static JPAMB entry method (`L` is empty when `m = 0`). Let `V` be the nonempty set of concrete JVM values.
 
-A concrete tagged value is a pair `(v, D)`, where `v` is a value in `V` and `D` is a subset of `L` containing the sources on which `v` depends. The collecting concrete domain is
+A concrete tagged value is a pair `(v, D)`, where `v` is a value in `V` and `D` is a subset of `L` assigned by an instrumented semantics of explicit data provenance. Tags are propagated by the rules below, rather than defined as exact semantic dependence on all possible executions. In particular, branch conditions do not add tags to constants assigned inside a branch. Combining tags can overstate semantic dependence, for example for `x - x`. The collecting concrete domain is
 
 `C = P(V x P(L))`,
 
@@ -28,7 +30,7 @@ bottom         = empty set
 top            = L
 ```
 
-An abstract element `T` means that the represented value may depend on any subset of the labels in `T`. The empty set means that a reachable value has no known source dependency. An unreachable program state is represented separately by the absence of a state at that program point; it must not be confused with an untainted value.
+An abstract element `T` allows any subset of the labels in `T`. The empty set represents a reachable value with no provenance tags in this model. An unreachable program state is represented separately by the absence of a state at that program point. In particular, `gamma(empty set) = V x {empty set}` is not empty: value bottom is not state unreachability. A missing or failed analysis report is also not an untainted result.
 
 ## Lemma 1: the abstract domain is a lattice
 
@@ -36,7 +38,7 @@ Set inclusion is reflexive, antisymmetric, and transitive, so `(P(L), subset)` i
 
 `(P(L), subset, union, intersection, empty set, L)`
 
-is a lattice. It is finite because `L` is finite.
+is a lattice. It is finite because `L` is finite, and therefore complete. Every strictly ascending chain contains at most `m + 1` elements, although the domain has `2^m` elements.
 
 ## Abstraction and concretization
 
@@ -116,7 +118,7 @@ Every concrete value arriving from either path is represented by the result. Thi
 
 ### Calls and returns
 
-At a call, each argument label set is copied to the corresponding callee parameter. On return, the return-value label set is copied to every represented return site. Because copying preserves labels and states from different callers are combined by join, this context-insensitive treatment may lose precision but retains all represented explicit dependencies.
+At a call, each argument label set is copied to the corresponding callee parameter; instance calls also copy the receiver to local slot zero. On return, the return-value label set and the callee heap are passed to each registered caller continuation. Joining callers and returns can introduce spurious combinations. Label copying itself is sound, provided that every actual callee and return continuation is covered and the heap representation remains valid. This is an obligation on the interprocedural model, not a consequence of the value-level Galois connection alone.
 
 ### Heap fields and arrays
 
@@ -130,7 +132,7 @@ For a field write, every possible target is weakly updated. The stored labels in
 
 `heap'(target.field) = heap(target.field) union labels(reference) union labels(value)`.
 
-Arrays initially use one abstract contents cell per non-null abstract target. Array reads and writes follow the same rules, additionally joining index labels when the selected element may depend on a tainted index. These rules may introduce additional dependencies, but they do not remove a dependency represented by the concrete access.
+Arrays use one abstract contents cell per non-null abstract target. Reads and writes additionally join index labels, so all elements at a target share one cell. Array creation combines dimension labels into the array reference; `arraylength` copies reference labels. These are conservative rules for the modeled accesses **if** the reference sets cover every accessed concrete location, all existing contents are represented, and reference-valued results retain adequate targets. Weak updates alone do not establish those premises. Default zero/null values are justified for freshly initialized cells, not arbitrary externally supplied object graphs or unmodeled class initialization.
 
 ### Security sinks and findings
 
@@ -138,7 +140,11 @@ When an invocation matches a configured security sink, its argument values are r
 
 ### Trusted summaries and sanitizers
 
-A library summary must provide a transfer function satisfying the same over-approximation condition. A sanitizer may return the empty set only under the explicit assumption that its specification guarantees that the returned value is safe according to the chosen security policy. Incorrect summaries or sanitizer specifications are outside the guarantee of this proof.
+A library summary must cover return labels, returned aliases, and any relevant heap effects or exceptional successors. Propagating argument labels to the return value alone does not establish that property.
+
+For **raw provenance**, a sanitizer cannot in general erase labels: an allowlist may return the original input, which still originates from its parameter. The preservation theorem for raw provenance therefore excludes label-erasing sanitizer summaries.
+
+Alternatively, the same lattice can track **policy-relative unsanitized taint**. In that instrumented semantics, a trusted sanitizer is explicitly allowed to reset the returned tag to the empty set. The value-level Galois proof is unchanged, and the conditional preservation theorem applies to these policy tags, not to raw provenance. To interpret this reset as security assurance, every normally returned value must be safe for all downstream sink uses covered by that reset, with no unmodeled relevant effects. The analyzer has one label set rather than a separate set per vulnerability category, so a sanitizer safe for one context is not automatically safe for every context. The allowlist benchmark uses each sanitizer only in its intended reflection or simulated-deserialization context. Incorrectly trusting `filterCommand` violates the policy premise.
 
 ## Lifting the abstraction to JVM states
 
@@ -146,28 +152,44 @@ The value abstraction is lifted component-wise to abstract locals, operand stack
 
 `State# = Locals# x Stack# x Heap#`,
 
-and the global analysis state maps each program counter to an abstract state. Ordering and join are defined point-wise. Reference targets are joined by set union, while the label component uses the taint lattice defined above. Therefore, if every concrete component is represented by its corresponding abstract component before a step, and the instruction transfer function satisfies the local over-approximation property, every concrete successor is represented by an abstract successor.
+and the global analysis maps each program counter to an abstract state. Interprocedural bookkeeping additionally stores caller continuations and return states; findings accumulate in a separate output component. Locals and stack positions must have compatible JVM kinds and stack shapes at each join. Uninitialized local slots are not ordinary untainted values.
+
+Write `s R a` when a concrete configuration is represented by the global abstract configuration. This relation requires: (1) every concrete value tag is contained in the corresponding abstract labels; (2) every possible concrete reference and alias used by an access is covered by the abstract targets and heap cells; (3) the initial heap, control-flow successors, calls, and continuations are represented. The value-level `alpha` defined earlier is **not** a definition of a whole-JVM-state abstraction function. A full state abstraction would also have to formalize these heap and call-stack components.
+
+The local obligation is: for every `s R a` and modeled step `s -> s'`, the abstract successors produced from `a` represent `s'`. The basic label rules above establish the label part of this obligation. Heap, call-graph, and summary coverage remain additional premises. In particular, over-approximate points-to sets need not be precise, but they must not omit an actual alias.
 
 ## Theorem 2: preservation over execution steps
 
-Assume that the initial abstract state represents every modeled concrete initial state and that every supported instruction and method summary satisfies
-
-`alpha(step(S)) <= step#(alpha(S))`.
-
-Then, after any finite number of execution steps, every reachable concrete tagged state is represented by the corresponding abstract state.
+Assume that (1) the initial global abstract configuration represents all modeled initial configurations, (2) every instruction and summary satisfies the local obligation for `R`, (3) joins preserve representation, and (4) the worklist processes all successors until it is closed under the abstract transfers. Then its result represents every modeled concrete configuration reachable after finitely many steps. This is a conditional simulation theorem; it does not assert that every implementation operation meets its premises.
 
 ### Proof sketch
 
-The proof is by induction on the number of concrete steps. The base case follows from the construction of the initial state: parameter `i` receives `{pi}`, constants have no source labels, and unreadable or unreachable locations are represented separately rather than as ordinary untainted values. For the induction step, assume that the abstract state represents the concrete state before an instruction. By the local correctness of the instruction transfer function, every concrete successor is represented by an abstract successor. Joining that successor into the stored state can only add information, so the representation remains valid. The property therefore holds for every finite execution prefix.
+The proof is by induction on the number of concrete steps, relative to the final closed abstract configuration. The base case is premise (1): assigning `{pi}` proves the parameter-label part, but does not by itself prove coverage of arbitrary initial heaps or aliases. For the induction step, suppose a configuration is represented. Premise (2) represents each concrete successor by the corresponding abstract successor. Closure in premise (4), together with the representation-preserving joins in premise (3), includes that successor in the final result. This proves the assertion for every finite execution prefix. This is not a claim that the worklist processes configurations in concrete execution order.
 
 ## Fixpoint and termination
 
-The worklist algorithm repeatedly joins incoming states at program points and reprocesses a point only when its stored state grows. All transfer functions are monotone: adding possible dependencies to an input cannot remove dependencies from the output.
+The worklist repeatedly joins incoming states at program points and reprocesses a point only when its stored state grows. Label copying, union, and a fixed policy reset are monotone. This does not automatically prove monotonicity of all reference and heap operations in the implementation (see the `getstatic` counterexample below).
 
-The label lattice is finite, as are the program points, local-variable positions, valid operand-stack positions, abstract reference targets, and context-insensitive return locations in the analyzed program. Hence the global abstract state has finite height. It can grow only finitely many times, so the worklist eventually becomes empty and the analysis reaches a fixpoint without widening.
+For a finite program with compatible JVM stack/local shapes, the label universe, program points, stack positions, local slots, field identifiers, abstract targets, continuation keys, and finding keys are finite. Stored states, continuations, returns, and finding labels accumulate by joins. Hence only finitely many strict growth events can enqueue work, and each event creates finite work. Assuming transfers return normally, processing terminates without widening. This argument uses finite accumulation; it does not require every implementation transfer to be monotone. Monotonicity and a sound representation are additionally required for the usual least-fixed-point interpretation of a monotone abstract semantic operator.
 
-At that fixpoint, Theorem 2 implies that every modeled reachable concrete state is represented. In particular, if a concrete value reaching a configured security sink depends on source `pi`, the corresponding abstract sink value contains `pi`.
+If Theorem 2's premises hold, every modeled reachable configuration is represented at closure. If sink observation also covers every relevant sensitive argument or receiver, every remaining concrete taint tag at that sink appears in its finding. This assertion concerns provenance tags without sanitization, or policy tags with trusted resets. It does not assert that every exploitable canary execution contains a tainted sink argument: for example, a constant unsafe class name selected only by a branch can trigger a canary without an explicit taint flow.
 
 ## Assumptions and limitations
 
-The guarantee is relative to the modeled semantics. It assumes correct handling of supported JVM instructions, a sufficiently complete call graph, correct reflection and deserialization summaries, correct sink specifications, and trustworthy sanitizer specifications. The initial analysis tracks explicit data flows but not implicit control dependencies. Unsupported library behavior and missing call-graph edges may invalidate whole-tool soundness even though the label-set abstraction itself satisfies the properties proved above.
+The established unconditional result is the Galois connection for label sets and correctness of the stated basic label operations. Whole-analysis preservation is conditional on the explicit premises above. The analysis excludes implicit control dependencies and exception-handler edges; `throw` ends an abstract path. Null entry references, arbitrary external heaps and aliases, class initialization, full JVM stack-manipulation support, and general library effects are not covered by the current implementation. Unsupported instructions generally fail instead of producing a successful report.
+
+## Implementation audit (25 November 2026)
+
+The initial checks used the local `taint_abstraction` checkout at `0adbf88`. After fetching the remote on 25 November, they were compared with `origin/project` at `5e4a5c0` (23 November), which includes `integrated-fuzzer` at `fe05a3a`. The local branch was subsequently fast-forwarded to `5e4a5c0`. The reference/heap operations, sink-distance lookup, and unflagged-pruning behavior are unchanged between these versions; the sanitizer default changed as recorded below. The review introduced no analyzer or fuzzer code changes; the branch update incorporated existing upstream changes.
+
+| Area | Observed behavior | Consequence |
+| --- | --- | --- |
+| External aliasing (`initial_state.py`, `heap_transfers.py`) | Each reference parameter gets a distinct `EXTERNAL_pi`. After `x.value = p2`, reading `y.value` produces `{p1}` if `x` and `y` are parameters 0 and 1, even when they could alias concretely. | The source `p2` is missed for aliased entry objects; arbitrary initial heaps/aliases do not satisfy the whole-state premises. |
+| Returned aliases (`summaries.py`) | Every summary reference result gets a fresh instruction-site target. Passing an untainted object with a `p0`-tainted field through `java.util.Objects.requireNonNull` loses access to that field's taint. | Return-label propagation does not cover identity-returning methods followed by heap access. |
+| Library heap effects (`summaries.py`) | All `java.*` calls use return-only propagation unless explicitly summarized. `java.util.Arrays.fill(array, p0)` changes no abstract cell; a subsequent load from an initially clean array remains untainted. | Generic summaries are not conservative models of arbitrary Java library behavior. |
+| Heap order (`abstractions.py`, `heap_transfers.py`) | A heap with no static reference cell is below one storing a non-null target. `getstatic` yields `NULL` for the former but only the stored target for the latter. These results are not ordered. | The claim that every implemented transfer is monotone under the implemented product order is false. Finite accumulation still supports termination, but no unconditional least-fixed-point or full-state proof follows. |
+| Sink-distance dependency (`analyzer.py`) | Every sink invocation requests a finite distance from its containing method to an exploit target, before checking whether arguments have labels. A missing path raises an error. | An otherwise valid sink analysis can fail because auxiliary distance metadata is absent. Analysis failure must not be classified as `unflagged`. |
+| Sanitizer configuration (`summaries.py`) | The default at `5e4a5c0`, now also used by the local branch, enables the two allowlist summaries; `filterCommand` has a method-ID constant but is not trusted in `DEFAULT_SUMMARIES`. Both allowlist entries were commented out in the earlier `0adbf88` checkout. | The current default is the trusted-allowlist configuration. The no-sanitizer and incorrectly trusted-filter rows require explicit changes; the earlier observation about disabled defaults no longer applies to either the local branch or the reviewed remote version. |
+| Fuzzer pruning (`steps/taint_fuzzer.py`, `stepwise_dynamic.py`) | `unflagged` skips fuzzing and reports `ok`; a failed/missing report falls back to fuzzing. | Skipping is a benchmark heuristic, not a safety proof. Explicit-flow absence does not rule out every canary execution. |
+
+The 62 existing taint tests pass both locally and against an isolated export of the remote taint module at `5e4a5c0`. Focused diagnostic executions reproduced the first four observations against both versions, and the failure on a clean sink invocation with missing distance metadata was reproduced locally in unchanged code. Those tests do not establish whole-tool soundness or reproduce the paper's benchmark counts. The benchmark source shows each allowlist used in its intended sink context; this review did not rerun the reported experiment configurations. The remote additionally contains experiment scripts under `results/`; they do not alter these reference/heap semantics.
